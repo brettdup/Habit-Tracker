@@ -8,7 +8,7 @@ struct HistoryView: View {
     var body: some View {
         List {
             ForEach(groupedCompletions.sorted(by: { $0.key > $1.key }), id: \.key) { date, completionsInDate in
-                Section(header: Text(dateFormatter.string(from: date))) {
+                Section(header: Text(format(date: date))) {
                     ForEach(completionsInDate) { completion in
                         Text(completion.habitName ?? "")
                     }
@@ -28,9 +28,21 @@ struct HistoryView: View {
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateStyle = .long
+        formatter.dateFormat = "EEEE, d MMMM"
         return formatter
     }()
+
+
+    private func format(date: Date) -> String {
+        if Calendar.current.isDateInToday(date) {
+            return "Today"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            return dateFormatter.string(from: date)
+        }
+    }
+
     
     private func deleteRecords(at offsets: IndexSet, completions: [HabitCompletionRecord]) {
         withAnimation {
