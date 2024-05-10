@@ -1,6 +1,16 @@
 {
   "images" : [
     {
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "light"
+        }
+      ],
       "filename" : "grey.jpg",
       "idiom" : "universal",
       "scale" : "1x"
@@ -12,11 +22,21 @@
           "value" : "dark"
         }
       ],
-      "filename" : "black.jpg",
+      "filename" : "dark_gray.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "light"
+        }
+      ],
       "filename" : "grey 2.jpg",
       "idiom" : "universal",
       "scale" : "2x"
@@ -28,11 +48,21 @@
           "value" : "dark"
         }
       ],
-      "filename" : "black 1.jpg",
+      "filename" : "dark_gray 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "idiom" : "universal",
+      "scale" : "3x"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "light"
+        }
+      ],
       "filename" : "grey 1.jpg",
       "idiom" : "universal",
       "scale" : "3x"
@@ -44,7 +74,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "black 2.jpg",
+      "filename" : "dark_gray 2.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

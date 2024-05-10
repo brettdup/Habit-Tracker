@@ -148,7 +148,7 @@ struct HabitRow: View {
 
             }
             .padding(.horizontal, 20)
-            .onLongPressGesture {
+            .onTapGesture {
                 isEditing = true
             }
             
@@ -163,10 +163,7 @@ struct HabitRow: View {
 
    
     private func toggleCompletion() {
-        print(habit)
-
-//        habit.isCompleted.toggle()
-//        print(habit)
+        
         if !habit.isCompleted {
             // Delete corresponding completion record if habit is unticked
             let fetchRequest: NSFetchRequest<HabitCompletionRecord> = HabitCompletionRecord.fetchRequest()
