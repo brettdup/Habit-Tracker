@@ -139,7 +139,7 @@ struct HabitRow: View {
                     
                     Spacer()
                     
-                    CheckBox(isChecked: $habit.isCompleted)
+                    CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion) // Pass the toggleCompletion closure
                         .foregroundColor(habit.isCompleted ? .accentColor : .secondary)
                         .padding(.trailing, 20)
                 }
@@ -163,7 +163,10 @@ struct HabitRow: View {
 
    
     private func toggleCompletion() {
-        habit.isCompleted.toggle()
+        print(habit)
+
+//        habit.isCompleted.toggle()
+//        print(habit)
         if !habit.isCompleted {
             // Delete corresponding completion record if habit is unticked
             let fetchRequest: NSFetchRequest<HabitCompletionRecord> = HabitCompletionRecord.fetchRequest()
@@ -186,6 +189,10 @@ struct HabitRow: View {
                 fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
             }
         }
+        else
+        {
+            addCompletionRecord(for: habit)
+        }
         do {
             try viewContext.save()
         } catch {
@@ -200,6 +207,7 @@ struct HabitRow: View {
 
 
     private func addCompletionRecord(for habit: Habit) {
+        print(habit)
         let newCompletion = HabitCompletionRecord(context: viewContext)
         newCompletion.date = Calendar.current.startOfDay(for: Date()) // Save only the day portion of the date
         newCompletion.habitName = habit.name
@@ -216,6 +224,7 @@ struct HabitRow: View {
 
 struct CheckBox: View {
     @Binding var isChecked: Bool
+    var toggleCompletion: () -> Void // Closure to toggle completion state
     
     var body: some View {
         Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
@@ -224,6 +233,7 @@ struct CheckBox: View {
             .padding(4)
             .onTapGesture {
                 isChecked.toggle()
+                toggleCompletion()
             }
     }
 }
