@@ -10,7 +10,7 @@
         <!--View Controller-->
         <scene sceneID="EHf-IW-A2E">
             <objects>
-                <viewController automaticallyAdjustsScrollViewInsets="NO" id="01J-lp-oVM" sceneMemberID="viewController">
+                <viewController automaticallyAdjustsScrollViewInsets="NO" keyboardType="off" id="01J-lp-oVM" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="NqX-t2-Xa2"/>
                         <viewControllerLayoutGuide type="bottom" id="QG8-NK-acj"/>
@@ -55,6 +55,7 @@
                             </mask>
                         </variation>
                     </view>
+                    <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>

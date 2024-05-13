@@ -44,6 +44,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     // For example, reset daily tasks, update data, etc.
         }
         
+        
         // Set the delegate for handling notifications
         UNUserNotificationCenter.current().delegate = self
         UserDefaults.standard.set(Date(), forKey: lastLaunchDateKey)
@@ -51,7 +52,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         
         return true
     }
-
+    
     // Handle notification when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Handle how to present the notification
@@ -82,4 +83,5 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             // If the last launch date is nil, it's the next day
             return true
         }
+
 }

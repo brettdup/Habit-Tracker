@@ -63,12 +63,6 @@ struct ContentView: View {
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        let context = PersistenceController.preview.container.viewContext
-        return ContentView().environment(\.managedObjectContext, context)
-    }
-}
 
 
 

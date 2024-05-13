@@ -7,13 +7,14 @@
 
 import SwiftUI
 import CoreData
+import Combine
 
 struct HabitListView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(entity: Habit.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Habit.name, ascending: true)]) var habits: FetchedResults<Habit>
     @State private var showAlert = false
     @State private var deletionIndexSet: IndexSet?
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
@@ -37,6 +38,12 @@ struct HabitListView: View {
                 .onAppear {
                     // Call the function to reset habits if it's a new day
                     resetHabitsIfNewDay()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    print("Opened in the background")
+                    resetHabitsIfNewDay()
+                    print("applicationDidBecomeActive")
+
                 }
             }
             
@@ -74,6 +81,8 @@ struct HabitListView: View {
         // Retrieve the last reset date from UserDefaults or another storage mechanism
         let defaults = UserDefaults.standard
         let lastResetDate = defaults.object(forKey: "LastResetDate") as? Date ?? Date.distantPast
+        
+        
         
         // Get the current date
         let currentDate = Date()
@@ -114,6 +123,8 @@ struct HabitListView: View {
             }
         }
     }
+    
+    
 
 
 }
