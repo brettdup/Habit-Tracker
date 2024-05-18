@@ -20,6 +20,12 @@ struct HistoryView: View {
         }
         .listStyle(GroupedListStyle())
         .navigationTitle("History")
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            print("Opened in the background - HISTORY")
+//            resetHabitsIfNewDay()
+            print("applicationDidBecomeActive")
+
+        }
     }
 
     private var groupedCompletions: [Date: [HabitCompletionRecord]] {
