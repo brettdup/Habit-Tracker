@@ -140,7 +140,7 @@ struct HabitRow: View {
 
     var body: some View {
             ZStack {
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 40)
                     .fill(Color(.systemGray5))
                 HStack {
                     Text(habit.name ?? "")
@@ -246,3 +246,42 @@ struct CheckBox: View {
     }
 }
 
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        let context = PersistenceController.preview.container.viewContext
+
+        // Clear existing sample data
+        clearSampleData(in: context)
+        // Create sample data
+        createSampleData(in: context)
+
+        return NavigationView {
+            HabitListView()
+                .environment(\.managedObjectContext, context)
+        }
+    }
+
+    private static func clearSampleData(in context: NSManagedObjectContext) {
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = Habit.fetchRequest()
+        let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+        
+        do {
+            try context.execute(deleteRequest)
+        } catch {
+            print("Failed to clear sample data: \(error)")
+        }
+    }
+
+    private static func createSampleData(in context: NSManagedObjectContext) {
+        for i in 1...5 {
+            let habit = Habit(context: context)
+            habit.name = "Sample Habit \(i)"
+            habit.isCompleted = i % 2 == 0
+        }
+        do {
+            try context.save()
+        } catch {
+            print("Failed to create sample data: \(error)")
+        }
+    }
+}

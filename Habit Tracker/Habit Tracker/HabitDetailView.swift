@@ -43,13 +43,12 @@ struct HabitDetailView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Edit Habit")) {
+                Section(header: Text("Edit")) {
                     HStack {
                         Text("Habit name: ")
                         TextField("Enter habit name", text: $habitName)
                     }
-                    
-                    HStack {
+                    HStack{
                         Text("Reminder Time:")
                         if isReminderSet {
                             if (habit.reminderTime != nil) {
@@ -67,13 +66,14 @@ struct HabitDetailView: View {
                                     }
                             }
                         } else {
-                            Text("None")
+                            Text("N/A")
                                 .foregroundColor(.gray)
                         }
                         Toggle(isOn: $isReminderSet) {
-                            Text("Reminder")
                         }
                     }
+                       
+                    
 
 
                     if isTimePickerVisible && isReminderSet {
@@ -263,3 +263,41 @@ struct HabitDetailView: View {
     
 }
 
+struct HabitDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        let context = PersistenceController.preview.container.viewContext
+        
+        // Clear existing sample data
+        clearSampleData(in: context)
+        // Create sample habit
+        let habit = createSampleHabit(in: context)
+        
+        return NavigationView {
+            HabitDetailView(habit: habit, viewContext: context)
+        }
+    }
+    
+    private static func clearSampleData(in context: NSManagedObjectContext) {
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = Habit.fetchRequest()
+        let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+        
+        do {
+            try context.execute(deleteRequest)
+        } catch {
+            print("Failed to clear sample data: \(error)")
+        }
+    }
+    
+    private static func createSampleHabit(in context: NSManagedObjectContext) -> Habit {
+        let habit = Habit(context: context)
+        habit.name = "Sample Habit"
+        habit.isCompleted = false
+        habit.reminderTime = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: Date())
+        do {
+            try context.save()
+        } catch {
+            print("Failed to create sample habit: \(error)")
+        }
+        return habit
+    }
+}
