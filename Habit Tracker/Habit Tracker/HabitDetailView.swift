@@ -87,6 +87,7 @@ struct HabitDetailView: View {
                             }
 
                     }
+                    
                     // Add controls for editing reminder time
                     
                     Button(action: {
@@ -98,7 +99,7 @@ struct HabitDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .background(Color.blue)
                                 .foregroundColor(.white)
-                                .cornerRadius(10)
+                                .cornerRadius(20)
                                 .padding(.horizontal)
                         }
                 }
