@@ -4,6 +4,8 @@ import CoreData
 struct HistoryView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(entity: HabitCompletionRecord.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \HabitCompletionRecord.date, ascending: false)]) var completions: FetchedResults<HabitCompletionRecord>
+    @State private var refreshTrigger = false
+
 
     var body: some View {
         List {
@@ -22,7 +24,7 @@ struct HistoryView: View {
         .navigationTitle("History")
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             print("Opened in the background - HISTORY")
-//            resetHabitsIfNewDay()
+            refreshData()
             print("applicationDidBecomeActive")
 
         }
@@ -62,6 +64,12 @@ struct HistoryView: View {
                 print("Error deleting records: \(error.localizedDescription)")
             }
         }
+    }
+    
+    private func refreshData() {
+            // Toggle the state variable to refresh the view
+            print("refreshed")
+            refreshTrigger.toggle()
     }
 }
 
