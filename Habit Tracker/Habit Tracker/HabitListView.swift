@@ -1,10 +1,3 @@
-//
-//  HabitListView.swift
-//  Habit Tracker
-//
-//  Created by Brett du Plessis on 2024/05/03.
-//
-
 import SwiftUI
 import CoreData
 import Combine
@@ -19,12 +12,9 @@ struct HabitListView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(habits) { habit in
-                    
-                    HabitRow(habit: habit)
+                    HabitRow(habit: habit, totalHabits: totalHabits)
                         .frame(height: 60)
-                        
                 }
-                
                 .alert(isPresented: $showAlert) {
                     Alert(
                         title: Text("Delete Habit"),
@@ -43,29 +33,27 @@ struct HabitListView: View {
                     print("Opened in the background")
                     resetHabitsIfNewDay()
                     print("applicationDidBecomeActive")
-
                 }
             }
-            
         }
     }
 
     public func deleteHabit(at offsets: IndexSet) {
         withAnimation {
-                    offsets.forEach { index in
-                        let habit = habits[index]
-                        // Delete associated reminders (notifications)
-                        deleteReminders(for: habit)
-                        viewContext.delete(habit)
-                    }
+            offsets.forEach { index in
+                let habit = habits[index]
+                // Delete associated reminders (notifications)
+                deleteReminders(for: habit)
+                viewContext.delete(habit)
+            }
 
-                    do {
-                        try viewContext.save()
-                    } catch {
-                        let nsError = error as NSError
-                        fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-                    }
-                }
+            do {
+                try viewContext.save()
+            } catch {
+                let nsError = error as NSError
+                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            }
+        }
     }
         
     private func deleteReminders(for habit: Habit) {
@@ -74,16 +62,12 @@ struct HabitListView: View {
         let identifier = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
     }
-
-    
     
     private func resetHabitsIfNewDay() {
         // Retrieve the last reset date from UserDefaults or another storage mechanism
         let defaults = UserDefaults.standard
         let lastResetDate = defaults.object(forKey: "LastResetDate") as? Date ?? Date.distantPast
-        
-        
-        
+
         // Get the current date
         let currentDate = Date()
 
@@ -123,12 +107,14 @@ struct HabitListView: View {
             }
         }
     }
-    
-    
-
-
 }
 
+// Extension to provide the computed property
+extension HabitListView {
+    var totalHabits: Int {
+        return habits.count
+    }
+}
 
 struct HabitRow: View {
     @ObservedObject var habit: Habit
@@ -136,45 +122,36 @@ struct HabitRow: View {
     @State private var showAlert = false
     @State private var isCheckboxTapped = false
     @State private var isEditing = false
-
+    var totalHabits: Int
 
     var body: some View {
-            ZStack {
-                RoundedRectangle(cornerRadius: 40)
-                    .fill(Color(.systemGray5))
-                HStack {
-                    Text(habit.name ?? "")
-                        .foregroundColor(habit.isCompleted ? .secondary : .primary)
-                        .font(.headline)
-                        .padding(.leading, 20)
-                    
-                    Spacer()
-                    
-                    CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion) // Pass the toggleCompletion closure
-                        .foregroundColor(habit.isCompleted ? .accentColor : .secondary)
-                        .padding(.trailing, 20)
-                }
-                .padding(.vertical, 10)
-                
+        ZStack {
+            RoundedRectangle(cornerRadius: 40)
+                .fill(Color(.systemGray5))
+            HStack {
+                Text(habit.name ?? "")
+                    .foregroundColor(habit.isCompleted ? .secondary : .primary)
+                    .font(.headline)
+                    .padding(.leading, 20)
 
+                Spacer()
+
+                CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
+                    .foregroundColor(habit.isCompleted ? .accentColor : .secondary)
+                    .padding(.trailing, 20)
             }
-            .padding(.horizontal, 20)
-            .onTapGesture {
-                isEditing = true
-            }
-            
-            .sheet(isPresented: $isEditing) {
-                HabitDetailView(habit: habit, viewContext: viewContext)
-            }
-        }     
+            .padding(.vertical, 10)
+        }
+        .padding(.horizontal, 20)
+        .onTapGesture {
+            isEditing = true
+        }
+        .sheet(isPresented: $isEditing) {
+            HabitDetailView(habit: habit, viewContext: viewContext)
+        }
+    }
     
-        
-
-    
-
-   
     private func toggleCompletion() {
-        
         if !habit.isCompleted {
             // Delete corresponding completion record if habit is unticked
             let fetchRequest: NSFetchRequest<HabitCompletionRecord> = HabitCompletionRecord.fetchRequest()
@@ -196,9 +173,7 @@ struct HabitRow: View {
                 let nsError = error as NSError
                 fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
             }
-        }
-        else
-        {
+        } else {
             addCompletionRecord(for: habit)
         }
         do {
@@ -209,17 +184,13 @@ struct HabitRow: View {
         }
     }
 
-
-
-
-
-
     private func addCompletionRecord(for habit: Habit) {
         print(habit)
         let newCompletion = HabitCompletionRecord(context: viewContext)
         newCompletion.date = Calendar.current.startOfDay(for: Date()) // Save only the day portion of the date
         newCompletion.habitName = habit.name
         newCompletion.isCompleted = true
+        newCompletion.totalHabits = Int16(totalHabits) // Set totalHabits
 
         do {
             try viewContext.save()
@@ -233,7 +204,7 @@ struct HabitRow: View {
 struct CheckBox: View {
     @Binding var isChecked: Bool
     var toggleCompletion: () -> Void // Closure to toggle completion state
-    
+
     var body: some View {
         Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
             .resizable()
