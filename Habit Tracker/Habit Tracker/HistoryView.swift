@@ -6,6 +6,8 @@ struct HistoryView: View {
     @FetchRequest(entity: HabitCompletionRecord.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \HabitCompletionRecord.date, ascending: false)]) var completions: FetchedResults<HabitCompletionRecord>
     @State private var refreshTrigger = false
     @State private var showOlderCompletions = false
+    @State private var currentDate = Date()
+
 
     var body: some View {
         List {
@@ -48,6 +50,7 @@ struct HistoryView: View {
             refreshData()
             print("applicationDidBecomeActive")
         }
+    
     }
 
     private var groupedCompletions: [Date: [HabitCompletionRecord]] {
@@ -55,16 +58,17 @@ struct HistoryView: View {
     }
 
     private var groupedCompletionsTodayAndYesterday: [(key: Date, value: [HabitCompletionRecord])] {
-        groupedCompletions.filter { Calendar.current.isDateInToday($0.key) || Calendar.current.isDateInYesterday($0.key) }
+        groupedCompletions.filter { Calendar.current.isDateInToday($0.key, referenceDate: currentDate) || Calendar.current.isDateInYesterday($0.key, referenceDate: currentDate) }
             .map { ($0.key, $0.value) }
             .sorted(by: { $0.key > $1.key })
     }
 
     private var groupedCompletionsOlder: [(key: Date, value: [HabitCompletionRecord])] {
-        groupedCompletions.filter { !Calendar.current.isDateInToday($0.key) && !Calendar.current.isDateInYesterday($0.key) }
+        groupedCompletions.filter { !Calendar.current.isDateInToday($0.key, referenceDate: currentDate) && !Calendar.current.isDateInYesterday($0.key, referenceDate: currentDate) }
             .map { ($0.key, $0.value) }
             .sorted(by: { $0.key > $1.key })
     }
+
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -73,14 +77,15 @@ struct HistoryView: View {
     }()
 
     private func format(date: Date) -> String {
-        if Calendar.current.isDateInToday(date) {
+        if Calendar.current.isDateInToday(date, referenceDate: currentDate) {
             return "Today"
-        } else if Calendar.current.isDateInYesterday(date) {
+        } else if Calendar.current.isDateInYesterday(date, referenceDate: currentDate) {
             return "Yesterday"
         } else {
             return dateFormatter.string(from: date)
         }
     }
+
 
     private func deleteRecords(at offsets: IndexSet, completions: [HabitCompletionRecord]) {
         withAnimation {
@@ -99,6 +104,7 @@ struct HistoryView: View {
     private func refreshData() {
         // Toggle the state variable to refresh the view
         print("refreshed")
+        currentDate = Date()
         refreshTrigger.toggle()
     }
     
@@ -109,7 +115,21 @@ struct HistoryView: View {
         }
         return 0
     }
+    
+    
 }
+
+extension Calendar {
+    func isDateInToday(_ date: Date, referenceDate: Date) -> Bool {
+        return self.isDate(date, inSameDayAs: referenceDate)
+    }
+    
+    func isDateInYesterday(_ date: Date, referenceDate: Date) -> Bool {
+        guard let yesterday = self.date(byAdding: .day, value: -1, to: referenceDate) else { return false }
+        return self.isDate(date, inSameDayAs: yesterday)
+    }
+}
+
 
 struct HistoryView_Previews: PreviewProvider {
     static var previews: some View {
