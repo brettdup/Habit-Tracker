@@ -11,41 +11,83 @@ import UserNotifications
 
 struct ScheduledNotificationsView: View {
     @State private var scheduledNotifications: [UNNotificationRequest] = []
-
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(scheduledNotifications, id: \.identifier) { notification in
-                    VStack(alignment: .leading) {
-                        Text(self.formattedNameString(for: notification.trigger, habitName: notification.content.title as? String))
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                        Text("Scheduled: \(self.formattedTimeString(for: notification.trigger, habitName: notification.content.title as? String))")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    .contextMenu {
-                        Button(action: {
-                            self.removeNotification(with: notification.identifier)
-                        }) {
-                            Text("Delete")
-                            Image(systemName: "trash")
+        ZStack {
+            // Dynamic background based on color scheme
+            Group {
+                if colorScheme == .dark {
+                    Color.black.opacity(0.9)
+                } else {
+                    LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.white.opacity(0.8)]),
+                                 startPoint: .top,
+                                 endPoint: .bottom)
+                }
+            }
+            .edgesIgnoringSafeArea(.all)
+            
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    if scheduledNotifications.isEmpty {
+                        VStack(spacing: 24) {
+                            Image(systemName: "bell.badge")
+                                .font(.system(size: 70))
+                                .foregroundStyle(.blue)
+                                .symbolEffect(.bounce)
+                            
+                            VStack(spacing: 12) {
+                                Text("No Active Reminders")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                
+                                Text("Add reminders to your habits to help stay on track")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+                        }
+                        .padding(24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(colorScheme == .dark ? Color(uiColor: .systemGray6) : Color(uiColor: .systemBackground))
+                                .shadow(radius: 8)
+                        )
+                        .padding(.horizontal)
+                    } else {
+                        ForEach(scheduledNotifications, id: \.identifier) { notification in
+                            ReminderCard(notification: notification) {
+                                removeNotification(with: notification.identifier)
+                            }
                         }
                     }
                 }
+                .padding()
             }
-            .navigationTitle("Scheduled Notifications")
-            .onAppear {
-                fetchScheduledNotifications()
-            }
+        }
+        .navigationTitle("Reminders")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            fetchScheduledNotifications()
         }
     }
 
     private func fetchScheduledNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
-                // Sort the requests based on the trigger date
+                // Print for debugging
+                print("Found \(requests.count) notifications")
+                for request in requests {
+                    print("Notification: \(request.identifier)")
+                    print("Title: \(request.content.title)")
+                    print("Body: \(request.content.body)")
+                    if let trigger = request.trigger as? UNCalendarNotificationTrigger {
+                        print("Next trigger date: \(trigger.nextTriggerDate()?.description ?? "none")")
+                    }
+                }
+                
                 self.scheduledNotifications = requests.sorted(by: { (request1, request2) -> Bool in
                     guard let trigger1 = request1.trigger as? UNCalendarNotificationTrigger,
                           let trigger2 = request2.trigger as? UNCalendarNotificationTrigger else {
@@ -57,17 +99,13 @@ struct ScheduledNotificationsView: View {
                 })
             }
         }
-        
     }
-    
-
-    
 
     private func removeNotification(with identifier: String) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-        
-        // Refresh the list of scheduled notifications
-        fetchScheduledNotifications()
+        withAnimation {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+            fetchScheduledNotifications()
+        }
     }
 
     private func formattedTimeString(for trigger: UNNotificationTrigger?, habitName: String?) -> String {
@@ -96,9 +134,6 @@ struct ScheduledNotificationsView: View {
         }
         
         let digitalTime = dateFormatter.string(from: reminderDate)
-        
-        let name = habitName ?? "Unknown Habit"
-        
         return "\(timeString) (\(digitalTime))"
     }
     
@@ -106,22 +141,64 @@ struct ScheduledNotificationsView: View {
         guard let trigger = trigger as? UNCalendarNotificationTrigger else { return "Unknown" }
         
         let name = habitName ?? "Unknown Habit"
-        
-        // Split the name string by the delimiter "-"
         let nameComponents = name.components(separatedBy: "-")
         
-        // Take the second part after the delimiter
         if let reminderName = nameComponents.last?.trimmingCharacters(in: .whitespaces) {
             return reminderName
         } else {
             return "Unknown Reminder"
         }
     }
-
-
-    
-    
-
 }
 
-
+struct ReminderCard: View {
+    let notification: UNNotificationRequest
+    let onDelete: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 50, height: 50)
+                .overlay(
+                    Image(systemName: "bell.fill")
+                        .foregroundStyle(.blue)
+                        .font(.system(size: 20))
+                )
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(notification.content.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12))
+                    Text(notification.content.body)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Button(action: onDelete) {
+                Image(systemName: "trash.fill")
+                    .foregroundStyle(.red)
+                    .font(.system(size: 16))
+                    .padding(8)
+                    .background(Color.red.opacity(0.1))
+                    .clipShape(Circle())
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? Color(uiColor: .systemGray6) : Color(uiColor: .systemBackground))
+                .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.1),
+                       radius: 8, x: 0, y: 2)
+        )
+    }
+}

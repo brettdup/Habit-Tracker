@@ -1,48 +1,105 @@
 import SwiftUI
 import CoreData
 import Combine
+import UIKit
 
 struct HabitListView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.colorScheme) private var colorScheme
     @FetchRequest(entity: Habit.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Habit.name, ascending: true)]) var habits: FetchedResults<Habit>
     @State private var showAlert = false
     @State private var deletionIndexSet: IndexSet?
+    @State private var showAddHabit = false
+    @State private var searchText = ""
+    
+    var filteredHabits: [Habit] {
+        if searchText.isEmpty {
+            return Array(habits)
+        }
+        return habits.filter { ($0.name ?? "").localizedCaseInsensitiveContains(searchText) }
+    }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(habits) { habit in
-                    HabitRow(habit: habit, totalHabits: totalHabits)
-                        .frame(height: 60)
+        ZStack {
+            // Background gradient - adapts to dark mode
+            LinearGradient(gradient: Gradient(colors: [
+                colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
+                colorScheme == .dark ? Color.black : Color.white
+            ]), startPoint: .top, endPoint: .bottom)
+            .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 0) {
+                // Search bar
+                SearchBar(text: $searchText)
+                    .padding(.horizontal)
+                    .padding(.top)
+                
+                if habits.isEmpty {
+                    EmptyStateView()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(filteredHabits, id: \.self) { habit in
+                                HabitRow(habit: habit, totalHabits: habits.count)
+                                    .frame(height: 80)
+                                    .transition(.scale)
+                            }
+                            .alert(isPresented: $showAlert) {
+                                Alert(
+                                    title: Text("Delete Habit"),
+                                    message: Text("Are you sure you want to delete this habit? This action cannot be undone."),
+                                    primaryButton: .destructive(Text("Delete")) {
+                                        withAnimation {
+                                            deleteHabit(at: deletionIndexSet!)
+                                        }
+                                    },
+                                    secondaryButton: .cancel()
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                    }
+                    .refreshable {
+                        resetHabitsIfNewDay()
+                    }
                 }
-                .alert(isPresented: $showAlert) {
-                    Alert(
-                        title: Text("Delete Habit"),
-                        message: Text("Are you sure you want to delete this habit?"),
-                        primaryButton: .destructive(Text("Delete")) {
-                            deleteHabit(at: deletionIndexSet!)
-                        },
-                        secondaryButton: .cancel()
-                    )
-                }
-                .onAppear {
-                    // Call the function to reset habits if it's a new day
-                    resetHabitsIfNewDay()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    print("Opened in the background")
-                    resetHabitsIfNewDay()
-                    print("applicationDidBecomeActive")
+            }
+            
+            // Floating Action Button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: { showAddHabit = true }) {
+                        Image(systemName: "plus")
+                            .font(.title2.bold())
+                            .foregroundColor(.white)
+                            .frame(width: 60, height: 60)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding()
                 }
             }
         }
+        .sheet(isPresented: $showAddHabit) {
+            NewHabitView()
+        }
+        .onAppear {
+            resetHabitsIfNewDay()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            resetHabitsIfNewDay()
+        }
     }
 
+    // Keep existing functions but update deleteHabit to include animation
     public func deleteHabit(at offsets: IndexSet) {
-        withAnimation {
+        withAnimation(.easeInOut) {
             offsets.forEach { index in
                 let habit = habits[index]
-                // Delete associated reminders (notifications)
                 deleteReminders(for: habit)
                 viewContext.delete(habit)
             }
@@ -50,12 +107,12 @@ struct HabitListView: View {
             do {
                 try viewContext.save()
             } catch {
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+                print("Error deleting habit: \(error.localizedDescription)")
             }
         }
     }
-        
+    
+    // Keep other existing functions unchanged
     private func deleteReminders(for habit: Habit) {
         guard let reminderTime = habit.reminderTime else { return }
         
@@ -64,61 +121,87 @@ struct HabitListView: View {
     }
     
     private func resetHabitsIfNewDay() {
-        // Retrieve the last reset date from UserDefaults or another storage mechanism
         let defaults = UserDefaults.standard
         let lastResetDate = defaults.object(forKey: "LastResetDate") as? Date ?? Date.distantPast
-
-        // Get the current date
         let currentDate = Date()
 
-        // Check if it's a new day
         if !Calendar.current.isDate(lastResetDate, inSameDayAs: currentDate) {
-            // Iterate through each habit
-            for habit in habits {
-                // Fetch the latest completion record for the habit
-                let fetchRequest: NSFetchRequest<HabitCompletionRecord> = HabitCompletionRecord.fetchRequest()
-                fetchRequest.predicate = NSPredicate(format: "habitName == %@", habit.name ?? "")
-                fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-                fetchRequest.fetchLimit = 1
+            withAnimation {
+                for habit in habits {
+                    let fetchRequest: NSFetchRequest<HabitCompletionRecord> = HabitCompletionRecord.fetchRequest()
+                    fetchRequest.predicate = NSPredicate(format: "habitName == %@", habit.name ?? "")
+                    fetchRequest.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+                    fetchRequest.fetchLimit = 1
 
-                do {
-                    let latestCompletionRecords = try viewContext.fetch(fetchRequest)
-                    if let latestCompletionRecord = latestCompletionRecords.first {
-                        // Check if the last completion date is earlier than the current date
-                        if let lastCompletionDate = latestCompletionRecord.date,
-                            lastCompletionDate < currentDate {
-                            // Reset the completion status
+                    do {
+                        let latestCompletionRecords = try viewContext.fetch(fetchRequest)
+                        if let latestCompletionRecord = latestCompletionRecords.first,
+                           let lastCompletionDate = latestCompletionRecord.date,
+                           lastCompletionDate < currentDate {
                             habit.isCompleted = false
                         }
+                    } catch {
+                        print("Error fetching completion record: \(error.localizedDescription)")
                     }
-                } catch {
-                    print("Error fetching latest completion record: \(error)")
                 }
-            }
-            
-            // Save the current date as the last reset date
-            defaults.set(currentDate, forKey: "LastResetDate")
-            
-            // Save the managed object context to persist changes
-            do {
-                try viewContext.save()
-            } catch {
-                print("Error saving managed object context: \(error)")
+                
+                defaults.set(currentDate, forKey: "LastResetDate")
+                
+                try? viewContext.save()
             }
         }
     }
 }
 
-// Extension to provide the computed property
-extension HabitListView {
-    var totalHabits: Int {
-        return habits.count
+// Modern Empty State View
+struct EmptyStateView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "list.bullet.clipboard")
+                .font(.system(size: 70))
+                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+            Text("No Habits Yet")
+                .font(.title2.bold())
+            Text("Tap the + button to add your first habit")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
     }
 }
 
+// Modern Search Bar
+struct SearchBar: View {
+    @Binding var text: String
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            TextField("Search habits...", text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+            if !text.isEmpty {
+                Button(action: { text = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding(8)
+        .background(colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6))
+        .cornerRadius(10)
+    }
+}
+
+// Keep remaining structs (HabitRow, CheckBox, ContentView_Previews) unchanged
 struct HabitRow: View {
     @ObservedObject var habit: Habit
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showAlert = false
     @State private var isCheckboxTapped = false
     @State private var isEditing = false
@@ -126,23 +209,33 @@ struct HabitRow: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 40)
-                .fill(Color(.systemGray5))
-            HStack {
-                Text(habit.name ?? "")
-                    .foregroundColor(habit.isCompleted ? .secondary : .primary)
-                    .font(.headline)
-                    .padding(.leading, 20)
-
-                Spacer()
-
+            RoundedRectangle(cornerRadius: 16)
+                .fill(habit.isCompleted ? 
+                    (colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1)) :
+                    (colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)))
+                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), 
+                       radius: 8, x: 0, y: 2)
+            
+            HStack(spacing: 16) {
                 CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
-                    .foregroundColor(habit.isCompleted ? .accentColor : .secondary)
-                    .padding(.trailing, 20)
+                    .foregroundColor(habit.isCompleted ? .blue : .gray)
+                    .frame(width: 30)
+                
+                Text(habit.name ?? "")
+                    .foregroundColor(habit.isCompleted ? .blue : (colorScheme == .dark ? .white : .primary))
+                    .font(.system(size: 17, weight: .medium))
+                    .strikethrough(habit.isCompleted)
+                    .animation(.easeInOut, value: habit.isCompleted)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.system(size: 14, weight: .semibold))
+                    .opacity(0.6)
             }
-            .padding(.vertical, 10)
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
         .onTapGesture {
             isEditing = true
         }
@@ -211,8 +304,10 @@ struct CheckBox: View {
             .frame(width: 24, height: 24)
             .padding(4)
             .onTapGesture {
-                isChecked.toggle()
-                toggleCompletion()
+                withAnimation(.spring()) {
+                    isChecked.toggle()
+                    toggleCompletion()
+                }
             }
     }
 }
@@ -226,9 +321,18 @@ struct ContentView_Previews: PreviewProvider {
         // Create sample data
         createSampleData(in: context)
 
-        return NavigationView {
-            HabitListView()
-                .environment(\.managedObjectContext, context)
+        return Group {
+            NavigationView {
+                HabitListView()
+                    .environment(\.managedObjectContext, context)
+            }
+            .preferredColorScheme(.light)
+            
+            NavigationView {
+                HabitListView()
+                    .environment(\.managedObjectContext, context)
+            }
+            .preferredColorScheme(.dark)
         }
     }
 

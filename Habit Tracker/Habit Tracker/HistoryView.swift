@@ -3,54 +3,138 @@ import CoreData
 
 struct HistoryView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.colorScheme) private var colorScheme
     @FetchRequest(entity: HabitCompletionRecord.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \HabitCompletionRecord.date, ascending: false)]) var completions: FetchedResults<HabitCompletionRecord>
     @State private var refreshTrigger = false
     @State private var showOlderCompletions = false
     @State private var currentDate = Date()
 
-
     var body: some View {
-        List {
-            ForEach(groupedCompletionsTodayAndYesterday, id: \.key) { date, completionsInDate in
-                Section(header: HStack {
-                    Text(format(date: date))
-                    Spacer()
-                    Text("\(completionsInDate.count)/\(totalHabits(on: date)) completed")
-                }) {
-                    ForEach(completionsInDate) { completion in
-                        Text(completion.habitName ?? "")
-                    }
-                    .onDelete { indexSet in
-                        deleteRecords(at: indexSet, completions: completionsInDate)
-                    }
-                }
-            }
+        ZStack {
+            // Background gradient
+            LinearGradient(gradient: Gradient(colors: [
+                colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
+                colorScheme == .dark ? Color.black : Color.white
+            ]),
+                          startPoint: .top,
+                          endPoint: .bottom)
+                .edgesIgnoringSafeArea(.all)
             
-            DisclosureGroup("Older Completions", isExpanded: $showOlderCompletions) {
-                ForEach(groupedCompletionsOlder, id: \.key) { date, completionsInDate in
-                    Section(header: HStack {
-                        Text(format(date: date))
-                        Spacer()
-                        Text("\(completionsInDate.count)/\(totalHabits(on: date)) completed")
-                    }) {
-                        ForEach(completionsInDate) { completion in
-                            Text(completion.habitName ?? "")
-                        }
-                        .onDelete { indexSet in
-                            deleteRecords(at: indexSet, completions: completionsInDate)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Today and Yesterday Section
+                    ForEach(groupedCompletionsTodayAndYesterday, id: \.key) { date, completionsInDate in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(format(date: date))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                Spacer()
+                                Text("\(completionsInDate.count)/\(totalHabits(on: date)) completed")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal)
+                            
+                            ForEach(completionsInDate) { completion in
+                                HStack {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text(completion.habitName ?? "")
+                                        .font(.body)
+                                    Spacer()
+                                }
+                                .padding()
+                                .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                .padding(.horizontal)
+                                .transition(.asymmetric(insertion: .scale.combined(with: .opacity),
+                                                      removal: .scale.combined(with: .opacity)))
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        withAnimation(.easeInOut) {
+                                            viewContext.delete(completion)
+                                            do {
+                                                try viewContext.save()
+                                            } catch {
+                                                print("Error deleting record: \(error.localizedDescription)")
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
                         }
                     }
+                    
+                    // Older Completions Section
+                    DisclosureGroup(
+                        content: {
+                            ForEach(groupedCompletionsOlder, id: \.key) { date, completionsInDate in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text(format(date: date))
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("\(completionsInDate.count)/\(totalHabits(on: date)) completed")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.top)
+                                    
+                                    ForEach(completionsInDate) { completion in
+                                        HStack {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                            Text(completion.habitName ?? "")
+                                            Spacer()
+                                        }
+                                        .padding()
+                                        .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                                        .cornerRadius(12)
+                                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                        .transition(.asymmetric(insertion: .scale.combined(with: .opacity),
+                                                              removal: .scale.combined(with: .opacity)))
+                                        .swipeActions(edge: .trailing) {
+                                            Button(role: .destructive) {
+                                                withAnimation(.easeInOut) {
+                                                    viewContext.delete(completion)
+                                                    do {
+                                                        try viewContext.save()
+                                                    } catch {
+                                                        print("Error deleting record: \(error.localizedDescription)")
+                                                    }
+                                                }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        label: {
+                            Text("Older Completions")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                        }
+                    )
+                    .padding()
+                    .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .padding(.horizontal)
                 }
+                .padding(.vertical)
             }
         }
-        .listStyle(GroupedListStyle())
         .navigationTitle("History")
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            print("Opened in the background - HISTORY")
+        .navigationBarTitleDisplayMode(.large)
+        .onAppear {
             refreshData()
-            print("applicationDidBecomeActive")
         }
-    
     }
 
     private var groupedCompletions: [Date: [HabitCompletionRecord]] {
@@ -69,7 +153,6 @@ struct HistoryView: View {
             .sorted(by: { $0.key > $1.key })
     }
 
-
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, d MMMM"
@@ -86,9 +169,8 @@ struct HistoryView: View {
         }
     }
 
-
     private func deleteRecords(at offsets: IndexSet, completions: [HabitCompletionRecord]) {
-        withAnimation {
+        withAnimation(.easeInOut) {
             offsets.forEach { index in
                 let completion = completions[index]
                 viewContext.delete(completion)
@@ -102,21 +184,16 @@ struct HistoryView: View {
     }
 
     private func refreshData() {
-        // Toggle the state variable to refresh the view
-        print("refreshed")
         currentDate = Date()
         refreshTrigger.toggle()
     }
     
     private func totalHabits(on date: Date) -> Int {
-        // Find a completion record for the given date and return the totalHabits value
         if let record = completions.first(where: { Calendar.current.isDate($0.date ?? Date(), inSameDayAs: date) }) {
             return Int(record.totalHabits)
         }
         return 0
     }
-    
-    
 }
 
 extension Calendar {
@@ -130,9 +207,10 @@ extension Calendar {
     }
 }
 
-
 struct HistoryView_Previews: PreviewProvider {
     static var previews: some View {
-        HistoryView()
+        NavigationView {
+            HistoryView()
+        }
     }
 }

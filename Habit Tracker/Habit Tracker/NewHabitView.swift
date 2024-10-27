@@ -7,125 +7,151 @@ struct NewHabitView: View {
     @State private var habitName: String = ""
     @State private var reminderTime: Date? = nil
     @State private var showingToast = false
-    @State private var isTimePickerVisible = false // Track the visibility of the time picker
-    @State private var isReminderSet = true // Track if the reminder time is set
-    @State private var selectedDate = Date() // New variable to bind to the Date state
-    @State private var isKeyboardHidden = true // Track if keyboard should be hidden
-
+    @State private var isTimePickerVisible = false
+    @State private var isReminderSet = true
+    @State private var selectedDate = Date()
+    @State private var isKeyboardHidden = true
     
     var body: some View {
-        VStack {
-            Spacer() // Add spacer to push form to the top
-            Form {
-                Section(header: Text("New Habit Form")) {
-                    VStack {
-                        TextField("Enter habit name", text: $habitName)
-                            .font(.system(size: 16, weight: .bold))
-                            .padding()
-                            .frame(width: 325)
-                            .background(RoundedRectangle(cornerRadius: 10).stroke(Color.blue, lineWidth: 1))
-                            .padding()
-                            .onTapGesture {
-                                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            }
+        ZStack {
+            // Modern gradient background
+            LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)]),
+                          startPoint: .topLeading,
+                          endPoint: .bottomTrailing)
+                .edgesIgnoringSafeArea(.all)
+            
+            ScrollView {
+                VStack(spacing: 30) {
+                    // Modern header with icon
+                    VStack(spacing: 8) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+                            .padding(.top, 20)
                         
-
-                        HStack {
-                            Text("Reminder Time:")
-                            Spacer()
+                        Text("Create New Habit")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Habit Name Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Habit Name", systemImage: "pencil")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        TextField("What habit would you like to build?", text: $habitName)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 16))
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Reminder Card
+                    VStack(alignment: .leading, spacing: 15) {
+                        Label("Reminder", systemImage: "bell.fill")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        VStack(spacing: 15) {
+                            Toggle(isOn: $isReminderSet) {
+                                Text("Daily Reminder")
+                                    .font(.system(size: 16))
+                            }
+                            .tint(.blue)
+                            
                             if isReminderSet {
-                                if reminderTime != nil {
-                                    Text(selectedTimeString)
-                                        .foregroundColor(.blue)
-                                        .onTapGesture {
-                                            isTimePickerVisible.toggle()
-                                        }
-                                } else {
-                                    Text("Select time")
-                                        .foregroundColor(.blue)
-                                        .underline()
-                                        .onTapGesture {
-                                            isTimePickerVisible.toggle()
+                                Divider()
+                                
+                                Button(action: { isTimePickerVisible.toggle() }) {
+                                    HStack {
+                                        Image(systemName: "clock.fill")
+                                            .foregroundColor(.blue)
+                                        Text(reminderTime != nil ? selectedTimeString : "Choose time")
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.gray)
+                                            .font(.system(size: 14))
+                                    }
+                                }
+                                
+                                if isTimePickerVisible {
+                                    DatePicker("", selection: $selectedDate, displayedComponents: .hourAndMinute)
+                                        .datePickerStyle(GraphicalDatePickerStyle())
+                                        .labelsHidden()
+                                        .onChange(of: selectedDate) { newValue in
+                                            reminderTime = newValue
                                         }
                                 }
-                            } else {
-                                Text("None")
-                                    .foregroundColor(.gray)
-                            }
-                            Toggle(isOn: $isReminderSet) {
-                                Text("Reminder")
                             }
                         }
-                        .padding(.horizontal) // Keep horizontal padding
-
-
-                        if isTimePickerVisible && isReminderSet {
-                            DatePicker("", selection: $selectedDate, displayedComponents: .hourAndMinute)
-                                .datePickerStyle(WheelDatePickerStyle())
-                                .labelsHidden()
-                                .padding(.vertical, 5) // Adjust vertical padding
-                                .padding(.horizontal) // Keep horizontal padding
-                                .onChange(of:selectedDate) { newValue in
-                                    reminderTime = newValue // Update reminderTime when selectedDate changes
-                                }
-
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    Spacer()
+                    
+                    // Modern floating action button
+                    Button(action: addHabit) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                            Text("Create Habit")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
+                                         startPoint: .leading,
+                                         endPoint: .trailing)
+                        )
+                        .foregroundColor(.white)
+                        .cornerRadius(20)
+                        .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            
+            // Modern toast notification
+            if showingToast {
+                VStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.green)
+                        Text("Habit Created Successfully")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .background(Color.black.opacity(0.8))
+                    .cornerRadius(30)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.spring())
+                .zIndex(1)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation {
+                            showingToast = false
                         }
                     }
-                    .frame(maxWidth: .infinity) // Make the form width extend to the maximum width
-                    .padding() // Add padding inside the form
                 }
             }
-            .gesture(
-                           TapGesture()
-                               .onEnded { _ in
-                                   UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                               }
-                       )
-            Spacer() // Add spacer to push form to the center
-            Button(action: {
-                    addHabit()
-                }) {
-                    Text("Add Habit")
-                        .fontWeight(.semibold)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                }
-                .padding(.vertical, 65)
-                .padding(.bottom, 20) // Add bottom padding to the button
         }
-        .frame(maxWidth: 500) // Limit the maximum width of the form
-        .padding(.top, 150)
-        .padding(.bottom, 20)
-        .background(Color.gray.opacity(0.1))
-        .edgesIgnoringSafeArea(.all)
-        .overlay(
-            VStack {
-                if showingToast {
-                    Text("New Habit Added")
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .transition(.move(edge: .top))
-                        .animation(.easeInOut(duration: 0.5))
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                showingToast = false
-                            }
-                        }
-                }
-                Spacer()
-            }
-            .padding(.top, UIApplication.shared.windows.first?.safeAreaInsets.top)
-            .edgesIgnoringSafeArea(.top)
-            , alignment: .top
-        )
-
-
     }
 
     private func addHabit() {
@@ -136,24 +162,27 @@ struct NewHabitView: View {
 
         do {
             try viewContext.save()
-            showingToast = true
-            if let notificationIdentifier = scheduleNotification(for: newHabit) {
-                        newHabit.notificationIdentifier = notificationIdentifier
-                        try viewContext.save() // Save the updated habit with notification identifier
+            withAnimation {
+                showingToast = true
             }
+            if let notificationIdentifier = scheduleNotification(for: newHabit) {
+                newHabit.notificationIdentifier = notificationIdentifier
+                try viewContext.save()
+            }
+            // Reset form
+            habitName = ""
+            reminderTime = nil
+            isTimePickerVisible = false
         } catch {
             let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Error saving habit: \(nsError), \(nsError.userInfo)")
         }
     }
     
     private var selectedTimeString: String {
-        guard let reminderTime = reminderTime else {
-            return "Now"
-        }
-        // Format the selected reminder time as a string
+        guard let reminderTime = reminderTime else { return "Now" }
         let formatter = DateFormatter()
-        formatter.timeStyle = .short // Display time in short format
+        formatter.timeStyle = .short
         return formatter.string(from: reminderTime)
     }
     
@@ -181,14 +210,12 @@ struct NewHabitView: View {
             }
         }
 
-        return identifier // Return the notification identifier
+        return identifier
     }
 }
-
 
 struct NewHabitView_Previews: PreviewProvider {
     static var previews: some View {
         NewHabitView()
     }
 }
-

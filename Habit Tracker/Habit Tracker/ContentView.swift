@@ -4,6 +4,7 @@ import CoreData
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(sortDescriptors: [], animation: .default) private var habits: FetchedResults<Habit>
+    
 
     var body: some View {
         TabView {
@@ -39,8 +40,12 @@ struct ContentView: View {
             
             // Settings View
             NavigationView {
-                SettingsView()
-                    .navigationTitle("Settings")
+                if #available(iOS 18.0, *) {
+                    SettingsView()
+                        .navigationTitle("Settings")
+                } else {
+                    // Fallback on earlier versions
+                }
             }
             .tabItem {
                 Image(systemName: "gearshape")
