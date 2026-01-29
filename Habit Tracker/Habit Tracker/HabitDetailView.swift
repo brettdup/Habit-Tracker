@@ -56,36 +56,35 @@ struct HabitDetailView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Dynamic background based on color scheme
-                Group {
-                    if colorScheme == .dark {
-                        Color.black.opacity(0.9)
-                    } else {
-                        LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.white.opacity(0.8)]),
-                                     startPoint: .top,
-                                     endPoint: .bottom)
-                    }
-                }
-                .edgesIgnoringSafeArea(.all)
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
+                        Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                        Color(.systemBackground)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 30) {
                         // Habit Name Section
                         VStack(alignment: .leading, spacing: 12) {
                             Label("Habit Name", systemImage: "pencil")
-                                .font(.headline)
-                                .foregroundColor(.primary.opacity(0.8))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(.secondary)
                             
                             TextField("Enter habit name", text: $habitName)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding()
+                                .textFieldStyle(.plain)
+                                .padding(16)
                                 .background(Color(.systemBackground))
-                                .cornerRadius(12)
-                                .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
                                 )
+                                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
                         }
                         .padding(.horizontal)
                         
@@ -114,8 +113,12 @@ struct HabitDetailView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 16)
                                 .background(Color(.systemBackground))
-                                .cornerRadius(12)
-                                .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: 4)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                                )
+                                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
                             }
                         }
                         .padding(.horizontal)

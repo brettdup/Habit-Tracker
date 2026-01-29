@@ -23,40 +23,57 @@ struct NewHabitView: View {
     
     var body: some View {
         ZStack {
-            // Modern gradient background
-            LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)]),
-                          startPoint: .topLeading,
-                          endPoint: .bottomTrailing)
-                .edgesIgnoringSafeArea(.all)
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.accentColor.opacity(0.2),
+                    Color.accentColor.opacity(0.1),
+                    Color(.systemBackground)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 30) {
-                    // Modern header with icon
-                    VStack(spacing: 8) {
-                        Image(systemName: "star.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.blue)
-                            .padding(.top, 20)
+                VStack(spacing: 28) {
+                    VStack(spacing: 12) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 52, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                         
                         Text("Create New Habit")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.system(size: 26, weight: .bold))
                             .foregroundColor(.primary)
+                        
+                        Text("Build a habit that sticks")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 24)
                     
                     // Habit Name Card
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Habit Name", systemImage: "pencil")
-                            .font(.headline)
-                            .foregroundColor(.gray)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.secondary)
                         
                         TextField("What habit would you like to build?", text: $habitName)
-                            .textFieldStyle(PlainTextFieldStyle())
+                            .textFieldStyle(.plain)
                             .font(.system(size: 16))
-                            .padding()
+                            .padding(16)
                             .background(Color(.systemBackground))
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
                     }
                     .padding(.horizontal, 20)
                     
@@ -85,8 +102,12 @@ struct NewHabitView: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 16)
                             .background(Color(.systemBackground))
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
                         }
                     }
                     .padding(.horizontal, 20)

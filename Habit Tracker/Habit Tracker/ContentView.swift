@@ -8,57 +8,56 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            // Habit List View
             NavigationView {
                 HabitListView()
                     .navigationTitle("Habits")
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Image(systemName: "list.bullet")
-                Text("Habits")
+                Label("Habits", systemImage: "list.bullet")
             }
             
-            // History View
             NavigationView {
                 HistoryView()
                     .navigationTitle("History")
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                Text("History")
+                Label("History", systemImage: "chart.line.uptrend.xyaxis")
             }
             
-            // New Habit View
             NavigationView {
                 NewHabitView()
                     .navigationTitle("New Habit")
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Image(systemName: "plus.circle")
-                Text("New Habit")
+                Label("New Habit", systemImage: "plus.circle.fill")
             }
             
-            // Settings View
             NavigationView {
-                if #available(iOS 18.0, *) {
-                    SettingsView()
-                        .navigationTitle("Settings")
-                } else {
-                    // Fallback on earlier versions
+                Group {
+                    if #available(iOS 18.0, *) {
+                        SettingsView()
+                    } else {
+                        Text("Settings")
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Image(systemName: "gearshape")
-                Text("Settings")
+                Label("Settings", systemImage: "gearshape.fill")
             }
-            
             
             NavigationView {
-                        ScheduledNotificationsView()
+                ScheduledNotificationsView()
+                    .navigationTitle("Reminders")
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Image(systemName: "calendar.badge.clock")
-                Text("Reminders")
+                Label("Reminders", systemImage: "bell.badge.fill")
             }
             
         }

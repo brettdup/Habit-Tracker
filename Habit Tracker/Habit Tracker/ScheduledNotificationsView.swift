@@ -24,26 +24,30 @@ struct ScheduledNotificationsView: View {
 
     var body: some View {
         ZStack {
-            // Dynamic background based on color scheme
-            Group {
-                if colorScheme == .dark {
-                    Color.black.opacity(0.9)
-                } else {
-                    LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.white.opacity(0.8)]),
-                                 startPoint: .top,
-                                 endPoint: .bottom)
-                }
-            }
-            .edgesIgnoringSafeArea(.all)
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                    Color(.systemBackground)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             ScrollView {
                 LazyVStack(spacing: 16) {
                     if reminderGroups.isEmpty {
                         VStack(spacing: 24) {
                             Image(systemName: "bell.badge")
-                                .font(.system(size: 70))
-                                .foregroundStyle(.blue)
-                                .symbolEffect(.bounce)
+                                .font(.system(size: 64, weight: .light))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.6)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                             
                             VStack(spacing: 12) {
                                 Text("No Active Reminders")
@@ -152,11 +156,11 @@ private struct ReminderGroupCard: View {
     var body: some View {
         HStack(spacing: 16) {
             Circle()
-                .fill(Color.blue.opacity(0.1))
+                .fill(Color.accentColor.opacity(0.12))
                 .frame(width: 50, height: 50)
                 .overlay(
                     Image(systemName: "bell.fill")
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(Color.accentColor)
                         .font(.system(size: 20))
                 )
             

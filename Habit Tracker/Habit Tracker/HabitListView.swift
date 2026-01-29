@@ -83,17 +83,17 @@ struct HabitListView: View {
     
     var body: some View {
         ZStack {
-            // More vibrant background gradient, tuned for light/dark
+            // Intense background gradient
             LinearGradient(
                 gradient: Gradient(colors: colorScheme == .dark
                     ? [
-                        Color.purple.opacity(0.55),
-                        Color.blue.opacity(0.65),
-                        Color.black
+                        Color.accentColor.opacity(0.45),
+                        Color.accentColor.opacity(0.25),
+                        Color(.systemBackground)
                     ]
                     : [
-                        Color(.systemTeal).opacity(0.35),
-                        Color(.systemIndigo).opacity(0.30),
+                        Color.accentColor.opacity(0.22),
+                        Color.accentColor.opacity(0.12),
                         Color(.systemBackground)
                     ]),
                 startPoint: .topLeading,
@@ -143,13 +143,17 @@ struct HabitListView: View {
                     Spacer()
                     Button(action: { showAddHabit = true }) {
                         Image(systemName: "plus")
-                            .font(.title2.bold())
-                            .foregroundColor(.white)
-                            .frame(width: 60, height: 60)
-                            .background(Color.accentColor)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .shadow(color: Color.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
+                                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                            )
                     }
+                    .buttonStyle(.plain)
                     .padding()
                 }
             }
@@ -283,18 +287,29 @@ struct EmptyStateView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "list.bullet.clipboard")
-                .font(.system(size: 70))
-                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
-            Text("No Habits Yet")
-                .font(.title2.bold())
-            Text("Tap the + button to add your first habit")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 28) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 56, weight: .light))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.accentColor.opacity(0.8), Color.accentColor.opacity(0.5)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            VStack(spacing: 10) {
+                Text("No Habits Yet")
+                    .font(.title2.weight(.bold))
+                    .foregroundColor(.primary)
+                Text("Tap the + button to start building\nyour first habit")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
         }
-        .padding()
+        .padding(40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -359,39 +374,44 @@ struct HabitRow: View {
     @ViewBuilder
     private var content: some View {
         HStack(spacing: 16) {
+            // Icon in soft rounded container
             Image(systemName: habit.iconName ?? HabitIcons.defaultIcon)
-                .font(.system(size: 22))
-                .foregroundColor(habit.isCompleted ? .blue : .primary)
-                .frame(width: 36, height: 36)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(habit.isCompleted ? Color.accentColor : (colorScheme == .dark ? .white.opacity(0.9) : .primary))
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(habit.isCompleted ? Color.accentColor.opacity(0.15) : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)))
+                )
             
             CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
-                .foregroundColor(habit.isCompleted ? .blue : .gray)
-                .frame(width: 30)
+                .foregroundColor(habit.isCompleted ? Color.accentColor : .secondary)
+                .frame(width: 32)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(habit.name ?? "")
-                    .foregroundColor(habit.isCompleted ? .blue : (colorScheme == .dark ? .white : .primary))
-                    .font(.system(size: 17, weight: .medium))
-                    .strikethrough(habit.isCompleted)
-                    .animation(.easeInOut, value: habit.isCompleted)
+                    .foregroundColor(habit.isCompleted ? .secondary : (colorScheme == .dark ? .white : .primary))
+                    .font(.system(size: 17, weight: .semibold))
+                    .strikethrough(habit.isCompleted, color: .secondary)
+                    .animation(.easeInOut(duration: 0.25), value: habit.isCompleted)
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     if let reminderTime = habit.reminderTime {
                         HStack(spacing: 4) {
                             Image(systemName: "bell.fill")
-                                .font(.system(size: 10))
+                                .font(.system(size: 9, weight: .medium))
                             Text(formatReminderTime(reminderTime))
-                                .font(.system(size: 12))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(.secondary)
                     }
                     
                     if habit.priority > 0 {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 2) {
                             Image(systemName: "star.fill")
-                                .font(.system(size: 10))
+                                .font(.system(size: 9))
                             Text("\(habit.priority)")
-                                .font(.system(size: 12))
+                                .font(.system(size: 12, weight: .medium))
                         }
                         .foregroundColor(.orange)
                     }
@@ -401,12 +421,12 @@ struct HabitRow: View {
             Spacer()
             
             Image(systemName: "chevron.right")
-                .foregroundColor(.gray)
-                .font(.system(size: 14, weight: .semibold))
-                .opacity(0.6)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .center)
     }
 
     private func formatReminderTime(_ date: Date) -> String {
@@ -467,15 +487,13 @@ struct HabitRow: View {
 
 struct CheckBox: View {
     @Binding var isChecked: Bool
-    var toggleCompletion: () -> Void // Closure to toggle completion state
+    var toggleCompletion: () -> Void
 
     var body: some View {
         Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-            .resizable()
-            .frame(width: 24, height: 24)
-            .padding(4)
+            .font(.system(size: 28, weight: .medium))
             .onTapGesture {
-                withAnimation(.spring()) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     isChecked.toggle()
                     toggleCompletion()
                 }
@@ -504,11 +522,16 @@ struct CategoryManagementView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(gradient: Gradient(colors: [
-                    colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
-                    colorScheme == .dark ? Color.black : Color.white
-                ]), startPoint: .top, endPoint: .bottom)
-                .edgesIgnoringSafeArea(.all)
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.accentColor.opacity(colorScheme == .dark ? 0.35 : 0.18),
+                        Color.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.08),
+                        Color(.systemBackground)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     if existingCategories.isEmpty {

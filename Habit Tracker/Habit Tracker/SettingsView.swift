@@ -20,8 +20,20 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        Form {
-            Section(header: Text("Appearance")) {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                    Color(.systemBackground)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            Form {
+                Section(header: Text("Appearance")) {
                 Picker(selection: $themeModeRaw, label: Label("Theme", systemImage: "paintbrush.fill")) {
                     ForEach(AppThemeMode.allCases, id: \.rawValue) { mode in
                         Text(mode.rawValue).tag(mode.rawValue)
@@ -69,6 +81,8 @@ struct SettingsView: View {
                     Label("Terms of Service", systemImage: "doc.text")
                 }
             }
+            }
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
     }

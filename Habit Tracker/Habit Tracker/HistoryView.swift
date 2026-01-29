@@ -11,14 +11,16 @@ struct HistoryView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(gradient: Gradient(colors: [
-                colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
-                colorScheme == .dark ? Color.black : Color.white
-            ]),
-                          startPoint: .top,
-                          endPoint: .bottom)
-                .edgesIgnoringSafeArea(.all)
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
+                    Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
+                    Color(.systemBackground)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 16) {
@@ -37,17 +39,23 @@ struct HistoryView: View {
                             .padding(.horizontal)
                             
                             ForEach(completionsInDate) { completion in
-                                HStack {
+                                HStack(spacing: 14) {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(Color.accentColor)
                                     Text(completion.habitName ?? "")
-                                        .font(.body)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.primary)
                                     Spacer()
                                 }
-                                .padding()
+                                .padding(16)
                                 .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
-                                .cornerRadius(12)
-                                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                )
+                                .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.04), radius: 6, x: 0, y: 2)
                                 .padding(.horizontal)
                                 .transition(.asymmetric(insertion: .scale.combined(with: .opacity),
                                                       removal: .scale.combined(with: .opacity)))
@@ -85,16 +93,23 @@ struct HistoryView: View {
                                     .padding(.top)
                                     
                                     ForEach(completionsInDate) { completion in
-                                        HStack {
+                                        HStack(spacing: 14) {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
+                                                .font(.system(size: 20))
+                                                .foregroundStyle(Color.accentColor)
                                             Text(completion.habitName ?? "")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.primary)
                                             Spacer()
                                         }
-                                        .padding()
+                                        .padding(16)
                                         .background(colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground))
-                                        .cornerRadius(12)
-                                        .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                        )
+                                        .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.04), radius: 6, x: 0, y: 2)
                                         .transition(.asymmetric(insertion: .scale.combined(with: .opacity),
                                                               removal: .scale.combined(with: .opacity)))
                                         .swipeActions(edge: .trailing) {
