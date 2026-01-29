@@ -98,5 +98,30 @@ struct HabitSchedule {
             mask = mask & ~bit
         }
     }
+
+    // MARK: - Time of Day Grouping
+    // Morning: 5am–12pm, Afternoon: 12pm–5pm, Evening: 5pm–12am, Night: 12am–5am
+    enum TimeOfDay: String, CaseIterable {
+        case night = "Night"
+        case morning = "Morning"
+        case afternoon = "Afternoon"
+        case evening = "Evening"
+        case noReminder = "No Reminder"
+
+        static var displayOrder: [TimeOfDay] {
+            [.night, .morning, .afternoon, .evening, .noReminder]
+        }
+
+        static func from(reminderTime: Date?) -> TimeOfDay {
+            guard let time = reminderTime else { return .noReminder }
+            let hour = Calendar.current.component(.hour, from: time)
+            switch hour {
+            case 0..<5: return .night
+            case 5..<12: return .morning
+            case 12..<17: return .afternoon
+            default: return .evening
+            }
+        }
+    }
 }
 

@@ -58,11 +58,9 @@ struct SettingsView: View {
                     Label("Enable Notifications", systemImage: "bell.fill")
                 }
                 
-                DatePicker(
-                    "Daily Reset Time",
-                    selection: $resetTime,
-                    displayedComponents: .hourAndMinute
-                )
+                DatePicker(selection: $resetTime, displayedComponents: .hourAndMinute) {
+                    Label("Daily Reset Time", systemImage: "clock")
+                }
             }
             
             Section(header: Text("About")) {
@@ -85,6 +83,36 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
+    }
+}
+
+@available(iOS 18.0, *)
+private struct AccentColorPickerView: View {
+    @Binding var selection: String
+
+    var body: some View {
+        List {
+            ForEach(AppAccentColor.allCases, id: \.rawValue) { color in
+                Button {
+                    selection = color.rawValue
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(color.color)
+                            .frame(width: 24, height: 24)
+                        Text(color.rawValue)
+                            .foregroundStyle(color.color)
+                        Spacer()
+                        if color.rawValue == selection {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(color.color)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Accent Color")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

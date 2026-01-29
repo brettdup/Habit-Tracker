@@ -62,23 +62,36 @@ struct HabitListView: View {
     }
     
     var groupedHabits: [String: [Habit]] {
-        guard selectedGroupOption == .category else {
-            return ["All": filteredHabits]
-        }
-        
-        var groups: [String: [Habit]] = [:]
-        for habit in filteredHabits {
-            let category = habit.category?.isEmpty == false ? habit.category! : "Uncategorized"
-            if groups[category] == nil {
-                groups[category] = []
+        // When sorting by time, group by time of day (Morning, Afternoon, Evening, Night)
+        if selectedSortOption == .time {
+            var groups: [String: [Habit]] = [:]
+            for habit in filteredHabits {
+                let timeOfDay = HabitSchedule.TimeOfDay.from(reminderTime: habit.reminderTime)
+                let key = timeOfDay.rawValue
+                if groups[key] == nil { groups[key] = [] }
+                groups[key]?.append(habit)
             }
-            groups[category]?.append(habit)
+            return groups
         }
-        return groups
+        if selectedGroupOption == .category {
+            var groups: [String: [Habit]] = [:]
+            for habit in filteredHabits {
+                let category = habit.category?.isEmpty == false ? habit.category! : "Uncategorized"
+                if groups[category] == nil { groups[category] = [] }
+                groups[category]?.append(habit)
+            }
+            return groups
+        }
+        return ["All": filteredHabits]
     }
     
-    var sortedCategoryKeys: [String] {
-        groupedHabits.keys.sorted()
+    var sortedGroupKeys: [String] {
+        if selectedSortOption == .time {
+            return HabitSchedule.TimeOfDay.displayOrder
+                .filter { (groupedHabits[$0.rawValue]?.isEmpty ?? true) == false }
+                .map(\.rawValue)
+        }
+        return groupedHabits.keys.sorted()
     }
     
     var body: some View {
@@ -107,15 +120,15 @@ struct HabitListView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            if selectedGroupOption == .category {
-                                ForEach(sortedCategoryKeys, id: \.self) { category in
+                            if groupedHabits.count > 1 || (groupedHabits.count == 1 && groupedHabits.keys.first != "All") {
+                                ForEach(sortedGroupKeys, id: \.self) { groupKey in
                                     VStack(alignment: .leading, spacing: 8) {
-                                        Text(category)
+                                        Text(groupKey)
                                             .font(.headline)
                                             .foregroundColor(.secondary)
                                             .padding(.horizontal, 4)
                                         
-                                        ForEach(groupedHabits[category] ?? [], id: \.self) { habit in
+                                        ForEach(groupedHabits[groupKey] ?? [], id: \.self) { habit in
                                             HabitRow(habit: habit, totalHabits: habits.count)
                                                 .frame(height: 80)
                                                 .transition(.scale)
@@ -363,6 +376,7 @@ struct HabitRow: View {
                             radius: 8, x: 0, y: 2)
             }
         }
+        .contentShape(Rectangle())
         .onTapGesture {
             isEditing = true
         }
