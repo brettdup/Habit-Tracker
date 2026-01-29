@@ -133,9 +133,6 @@ struct HabitListView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
                     }
-                    .refreshable {
-                        resetHabitsIfNewDay()
-                    }
                 }
             }
             
@@ -341,7 +338,8 @@ struct HabitRow: View {
             if #available(iOS 26, *) {
                 content
                     .glassEffect(
-                        .regular.interactive(),
+                        // Neutral glass with a subtle white highlight so color comes from the background.
+                        .regular.tint(.white.opacity(0.22)).interactive(),
                         in: .rect(cornerRadius: 16)
                     )
             } else {
@@ -544,13 +542,16 @@ struct CategoryManagementView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(filteredCategories, id: \.self) { category in
-                                    CategoryCard(
-                                        name: category,
-                                        habitCount: habits.filter { $0.category == category }.count,
-                                        tint: tintColor(for: category)
-                                    ) {
-                                        deleteCategory(named: category)
+                                    NavigationLink(destination: CategoryHabitsView(categoryName: category)) {
+                                        CategoryCard(
+                                            name: category,
+                                            habitCount: habits.filter { $0.category == category }.count,
+                                            tint: tintColor(for: category)
+                                        ) {
+                                            deleteCategory(named: category)
+                                        }
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -619,6 +620,59 @@ struct CategoryManagementView: View {
         let hash = abs(category.lowercased().hashValue)
         let palette: [Color] = [.blue, .purple, .orange, .green, .pink, .teal, .indigo]
         return palette[hash % palette.count]
+    }
+}
+
+struct CategoryHabitsView: View {
+    let categoryName: String
+    @Environment(\.colorScheme) private var colorScheme
+    @FetchRequest private var habits: FetchedResults<Habit>
+    
+    init(categoryName: String) {
+        self.categoryName = categoryName
+        _habits = FetchRequest<Habit>(
+            entity: Habit.entity(),
+            sortDescriptors: [NSSortDescriptor(keyPath: \Habit.name, ascending: true)],
+            predicate: NSPredicate(format: "category == %@", categoryName)
+        )
+    }
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(gradient: Gradient(colors: [
+                colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
+                colorScheme == .dark ? Color.black : Color.white
+            ]), startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea()
+            
+            if habits.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 70))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                    Text("No Habits in \(categoryName)")
+                        .font(.title2.bold())
+                    Text("Add habits and assign them to this category")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(Array(habits), id: \.self) { habit in
+                            HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: false)
+                                .frame(height: 80)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                }
+            }
+        }
+        .navigationTitle(categoryName)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
