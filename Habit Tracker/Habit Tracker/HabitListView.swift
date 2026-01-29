@@ -83,12 +83,23 @@ struct HabitListView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient - adapts to dark mode
-            LinearGradient(gradient: Gradient(colors: [
-                colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1),
-                colorScheme == .dark ? Color.black : Color.white
-            ]), startPoint: .top, endPoint: .bottom)
-            .edgesIgnoringSafeArea(.all)
+            // More vibrant background gradient, tuned for light/dark
+            LinearGradient(
+                gradient: Gradient(colors: colorScheme == .dark
+                    ? [
+                        Color.purple.opacity(0.55),
+                        Color.blue.opacity(0.65),
+                        Color.black
+                    ]
+                    : [
+                        Color(.systemTeal).opacity(0.35),
+                        Color(.systemIndigo).opacity(0.30),
+                        Color(.systemBackground)
+                    ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 if habits.isEmpty {
@@ -105,7 +116,7 @@ struct HabitListView: View {
                                             .padding(.horizontal, 4)
                                         
                                         ForEach(groupedHabits[category] ?? [], id: \.self) { habit in
-                                            HabitRow(habit: habit, totalHabits: habits.count)
+                                            HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: false)
                                                 .frame(height: 80)
                                                 .transition(.scale)
                                         }
@@ -113,7 +124,7 @@ struct HabitListView: View {
                                 }
                             } else {
                                 ForEach(filteredHabits, id: \.self) { habit in
-                                    HabitRow(habit: habit, totalHabits: habits.count)
+                                    HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: true)
                                         .frame(height: 80)
                                         .transition(.scale)
                                 }
@@ -323,77 +334,22 @@ struct HabitRow: View {
     @State private var isCheckboxTapped = false
     @State private var isEditing = false
     var totalHabits: Int
+    var showCategoryChip: Bool = true
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(habit.isCompleted ? 
-                    (colorScheme == .dark ? Color.blue.opacity(0.2) : Color.blue.opacity(0.1)) :
-                    (colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)))
-                .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), 
-                       radius: 8, x: 0, y: 2)
-            
-            HStack(spacing: 16) {
-                CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
-                    .foregroundColor(habit.isCompleted ? .blue : .gray)
-                    .frame(width: 30)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(habit.name ?? "")
-                        .foregroundColor(habit.isCompleted ? .blue : (colorScheme == .dark ? .white : .primary))
-                        .font(.system(size: 17, weight: .medium))
-                        .strikethrough(habit.isCompleted)
-                        .animation(.easeInOut, value: habit.isCompleted)
-                    
-                    HStack(spacing: 8) {
-                        if let reminderTime = habit.reminderTime {
-                            HStack(spacing: 4) {
-                                Image(systemName: "bell.fill")
-                                    .font(.system(size: 10))
-                                Text(formatReminderTime(reminderTime))
-                                    .font(.system(size: 12))
-                            }
-                            .foregroundColor(.secondary)
-                        }
-
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 10))
-                            Text(HabitSchedule.label(for: habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask))
-                                .font(.system(size: 12))
-                        }
-                        .foregroundColor(.secondary)
-                        
-                        if let category = habit.category, !category.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "tag.fill")
-                                    .font(.system(size: 10))
-                                Text(category)
-                                    .font(.system(size: 12))
-                            }
-                            .foregroundColor(.secondary)
-                        }
-                        
-                        if habit.priority > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 10))
-                                Text("\(habit.priority)")
-                                    .font(.system(size: 12))
-                            }
-                            .foregroundColor(.orange)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 14, weight: .semibold))
-                    .opacity(0.6)
+        Group {
+            if #available(iOS 26, *) {
+                content
+                    .glassEffect(
+                        .regular.interactive(),
+                        in: .rect(cornerRadius: 16)
+                    )
+            } else {
+                content
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: colorScheme == .dark ? Color.clear : Color.black.opacity(0.05),
+                            radius: 8, x: 0, y: 2)
             }
-            .padding(.horizontal, 20)
         }
         .onTapGesture {
             isEditing = true
@@ -401,6 +357,72 @@ struct HabitRow: View {
         .sheet(isPresented: $isEditing) {
             HabitDetailView(habit: habit, viewContext: viewContext)
         }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        HStack(spacing: 16) {
+            CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
+                .foregroundColor(habit.isCompleted ? .blue : .gray)
+                .frame(width: 30)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(habit.name ?? "")
+                    .foregroundColor(habit.isCompleted ? .blue : (colorScheme == .dark ? .white : .primary))
+                    .font(.system(size: 17, weight: .medium))
+                    .strikethrough(habit.isCompleted)
+                    .animation(.easeInOut, value: habit.isCompleted)
+                
+                HStack(spacing: 8) {
+                    if let reminderTime = habit.reminderTime {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bell.fill")
+                                .font(.system(size: 10))
+                            Text(formatReminderTime(reminderTime))
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.secondary)
+                    }
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10))
+                        Text(HabitSchedule.label(for: habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask))
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(.secondary)
+                    
+                    if showCategoryChip, let category = habit.category, !category.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 10))
+                            Text(category)
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                    
+                    if habit.priority > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 10))
+                            Text("\(habit.priority)")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundColor(.orange)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+                .font(.system(size: 14, weight: .semibold))
+                .opacity(0.6)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .center)
     }
 
     private func formatReminderTime(_ date: Date) -> String {
