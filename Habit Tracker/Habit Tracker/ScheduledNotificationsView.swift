@@ -9,8 +9,17 @@ import SwiftUI
 import CoreData
 import UserNotifications
 
+private struct ReminderGroup: Identifiable {
+    let id: String // base identifier
+    let title: String
+    let body: String
+    let requests: [UNNotificationRequest]
+    let weekdays: [Int] // 1=Sun ... 7=Sat
+    let nextTriggerDate: Date?
+}
+
 struct ScheduledNotificationsView: View {
-    @State private var scheduledNotifications: [UNNotificationRequest] = []
+    @State private var reminderGroups: [ReminderGroup] = []
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -29,7 +38,7 @@ struct ScheduledNotificationsView: View {
             
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    if scheduledNotifications.isEmpty {
+                    if reminderGroups.isEmpty {
                         VStack(spacing: 24) {
                             Image(systemName: "bell.badge")
                                 .font(.system(size: 70))
@@ -57,9 +66,9 @@ struct ScheduledNotificationsView: View {
                         )
                         .padding(.horizontal)
                     } else {
-                        ForEach(scheduledNotifications, id: \.identifier) { notification in
-                            ReminderCard(notification: notification) {
-                                removeNotification(with: notification.identifier)
+                        ForEach(reminderGroups) { group in
+                            ReminderGroupCard(group: group) {
+                                removeNotifications(withIdentifiers: group.requests.map(\.identifier))
                             }
                         }
                     }
@@ -77,84 +86,68 @@ struct ScheduledNotificationsView: View {
     private func fetchScheduledNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
-                // Print for debugging
-                print("Found \(requests.count) notifications")
-                for request in requests {
-                    print("Notification: \(request.identifier)")
-                    print("Title: \(request.content.title)")
-                    print("Body: \(request.content.body)")
-                    if let trigger = request.trigger as? UNCalendarNotificationTrigger {
-                        print("Next trigger date: \(trigger.nextTriggerDate()?.description ?? "none")")
-                    }
-                }
-                
-                self.scheduledNotifications = requests.sorted(by: { (request1, request2) -> Bool in
-                    guard let trigger1 = request1.trigger as? UNCalendarNotificationTrigger,
-                          let trigger2 = request2.trigger as? UNCalendarNotificationTrigger else {
-                        return false
-                    }
-                    let date1 = trigger1.nextTriggerDate() ?? Date.distantFuture
-                    let date2 = trigger2.nextTriggerDate() ?? Date.distantFuture
-                    return date1 < date2
-                })
+                let habitRequests = requests.filter { $0.identifier.hasPrefix("habitReminder-") }
+                self.reminderGroups = groupRequests(habitRequests)
+                    .sorted(by: { g1, g2 in
+                        let d1 = g1.nextTriggerDate ?? Date.distantFuture
+                        let d2 = g2.nextTriggerDate ?? Date.distantFuture
+                        if d1 != d2 { return d1 < d2 }
+                        return g1.title < g2.title
+                    })
             }
         }
     }
 
-    private func removeNotification(with identifier: String) {
+    private func removeNotifications(withIdentifiers identifiers: [String]) {
         withAnimation {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
             fetchScheduledNotifications()
         }
     }
 
-    private func formattedTimeString(for trigger: UNNotificationTrigger?, habitName: String?) -> String {
-        guard let trigger = trigger as? UNCalendarNotificationTrigger else { return "Unknown" }
-        
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        formatter.dateTimeStyle = .named
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HH:mm"
-        
-        let currentDate = Date()
-        let reminderDate = trigger.nextTriggerDate() ?? Date()
-        
-        let timeDifference = Calendar.current.dateComponents([.hour, .minute], from: currentDate, to: reminderDate)
-        let hourDifference = timeDifference.hour ?? 0
-        let minuteDifference = timeDifference.minute ?? 0
-        
-        var timeString = ""
-        if hourDifference > 0 {
-            timeString += "in \(hourDifference)h"
+    private func groupRequests(_ requests: [UNNotificationRequest]) -> [ReminderGroup] {
+        let grouped = Dictionary(grouping: requests, by: { baseIdentifier(from: $0.identifier) })
+        return grouped.map { base, reqs in
+            let sortedReqs = reqs.sorted { ($0.identifier) < ($1.identifier) }
+            let title = sortedReqs.first?.content.title ?? "Reminder"
+            let body = sortedReqs.first?.content.body ?? ""
+            let weekdays = sortedReqs.compactMap { weekday(from: $0.identifier) }.sorted()
+            let nextDate = sortedReqs
+                .compactMap { ( $0.trigger as? UNCalendarNotificationTrigger )?.nextTriggerDate() }
+                .min()
+            return ReminderGroup(
+                id: base,
+                title: title,
+                body: body,
+                requests: sortedReqs,
+                weekdays: weekdays,
+                nextTriggerDate: nextDate
+            )
         }
-        if minuteDifference > 0 {
-            timeString += "\(minuteDifference)m"
-        }
-        
-        let digitalTime = dateFormatter.string(from: reminderDate)
-        return "\(timeString) (\(digitalTime))"
     }
-    
-    private func formattedNameString(for trigger: UNNotificationTrigger?, habitName: String?) -> String {
-        guard let trigger = trigger as? UNCalendarNotificationTrigger else { return "Unknown" }
-        
-        let name = habitName ?? "Unknown Habit"
-        let nameComponents = name.components(separatedBy: "-")
-        
-        if let reminderName = nameComponents.last?.trimmingCharacters(in: .whitespaces) {
-            return reminderName
-        } else {
-            return "Unknown Reminder"
+
+    /// identifier format: "habitReminder-<habitURI>-<weekdayInt>"
+    /// We recover the base by stripping a trailing "-<1..7>" segment, if present.
+    private func baseIdentifier(from identifier: String) -> String {
+        let parts = identifier.split(separator: "-")
+        guard parts.count >= 2, let last = parts.last, let n = Int(last), (1...7).contains(n) else {
+            return identifier
         }
+        return parts.dropLast().joined(separator: "-")
+    }
+
+    private func weekday(from identifier: String) -> Int? {
+        let parts = identifier.split(separator: "-")
+        guard let last = parts.last, let n = Int(last), (1...7).contains(n) else { return nil }
+        return n
     }
 }
 
-struct ReminderCard: View {
-    let notification: UNNotificationRequest
+private struct ReminderGroupCard: View {
+    let group: ReminderGroup
     let onDelete: () -> Void
     @Environment(\.colorScheme) var colorScheme
+    @State private var showDeleteConfirm = false
     
     var body: some View {
         HStack(spacing: 16) {
@@ -168,23 +161,41 @@ struct ReminderCard: View {
                 )
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(notification.content.title)
+                Text(group.title)
                     .font(.headline)
                     .foregroundStyle(.primary)
                 
-                HStack {
-                    Image(systemName: "clock.fill")
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "clock.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                        Text("\(daysLabel(group.weekdays)) at \(timeLabel(group.requests.first))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.clock")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                        Text("Next: \(nextLabel(group.nextTriggerDate))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                if !group.body.isEmpty {
+                    Text(group.body)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                        .font(.system(size: 12))
-                    Text(notification.content.body)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             }
             
             Spacer()
             
-            Button(action: onDelete) {
+            Button(action: { showDeleteConfirm = true }) {
                 Image(systemName: "trash.fill")
                     .foregroundStyle(.red)
                     .font(.system(size: 16))
@@ -200,5 +211,57 @@ struct ReminderCard: View {
                 .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.1),
                        radius: 8, x: 0, y: 2)
         )
+        .alert("Remove reminder?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) { onDelete() }
+        } message: {
+            Text("This will remove \(group.requests.count) scheduled reminder\(group.requests.count == 1 ? "" : "s") for this habit.")
+        }
+    }
+
+    private func nextLabel(_ date: Date?) -> String {
+        guard let date else { return "Unknown time" }
+        let relative = RelativeDateTimeFormatter()
+        relative.unitsStyle = .short
+        let rel = relative.localizedString(for: date, relativeTo: Date())
+
+        let time = DateFormatter()
+        time.locale = .autoupdatingCurrent
+        time.dateStyle = .none
+        time.timeStyle = .short
+        return "\(rel) (\(time.string(from: date)))"
+    }
+    
+    private func timeLabel(_ request: UNNotificationRequest?) -> String {
+        guard
+            let request,
+            let trigger = request.trigger as? UNCalendarNotificationTrigger,
+            let date = trigger.nextTriggerDate()
+        else { return "Unknown time" }
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func daysLabel(_ weekdays: [Int]) -> String {
+        if weekdays.count == 7 { return "Every day" }
+        if weekdays == [2, 3, 4, 5, 6] { return "Weekdays" }
+        if weekdays == [1, 7] { return "Weekends" }
+        
+        func short(_ weekday: Int) -> String {
+            switch weekday {
+            case 1: return "Sun"
+            case 2: return "Mon"
+            case 3: return "Tue"
+            case 4: return "Wed"
+            case 5: return "Thu"
+            case 6: return "Fri"
+            case 7: return "Sat"
+            default: return "?"
+            }
+        }
+        return weekdays.map(short).joined(separator: ", ")
     }
 }

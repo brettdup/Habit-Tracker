@@ -4,6 +4,7 @@ import CoreData
 
 struct NewHabitView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @ObservedObject private var categoryStore = CategoryStore.shared
     @State private var habitName: String = ""
     @State private var reminderTime: Date? = nil
     @State private var showingToast = false
@@ -11,6 +12,12 @@ struct NewHabitView: View {
     @State private var isReminderSet = true
     @State private var selectedDate = Date()
     @State private var isKeyboardHidden = true
+    @State private var category: String = ""
+    @State private var priority: Int16 = 0
+    @State private var showCategoryPicker = false
+    @State private var activeDaysMask: Int16 = HabitSchedule.allDaysMask
+    
+    private var existingCategories: [String] { categoryStore.categories }
     
     var body: some View {
         ZStack {
@@ -48,6 +55,160 @@ struct NewHabitView: View {
                             .background(Color(.systemBackground))
                             .cornerRadius(16)
                             .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Category Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Category", systemImage: "tag")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        Menu {
+                            Button(action: { category = "" }) {
+                                HStack {
+                                    Text("None")
+                                    if category.isEmpty {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            ForEach(existingCategories, id: \.self) { cat in
+                                Button(action: { category = cat }) {
+                                    HStack {
+                                        Text(cat)
+                                        if category == cat {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Divider()
+                            
+                            Button(action: { showCategoryPicker = true }) {
+                                HStack {
+                                    Image(systemName: "plus.circle")
+                                    Text("New Category")
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "tag.fill")
+                                    .foregroundColor(.blue)
+                                Text(category.isEmpty ? "Select Category" : category)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .alert("New Category", isPresented: $showCategoryPicker) {
+                        TextField("Category name", text: $category)
+                        Button("Cancel", role: .cancel) {
+                            category = ""
+                        }
+                        Button("Add") {
+                            categoryStore.add(category)
+                        }
+                    } message: {
+                        Text("Enter a name for the new category")
+                    }
+                    
+                    // Priority Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Priority", systemImage: "star")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Priority Level")
+                                    .font(.system(size: 16))
+                                Spacer()
+                                Text("\(priority)")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            HStack(spacing: 12) {
+                                ForEach(1...5, id: \.self) { index in
+                                    Button(action: { priority = Int16(index) }) {
+                                        Image(systemName: index <= priority ? "star.fill" : "star")
+                                            .foregroundColor(index <= priority ? .orange : .gray)
+                                            .font(.system(size: 24))
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 20)
+
+                    // Schedule Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Schedule", systemImage: "calendar")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Active on")
+                                    .font(.system(size: 16))
+                                Spacer()
+                                Text(HabitSchedule.label(for: activeDaysMask))
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+
+                            HStack(spacing: 10) {
+                                SchedulePresetButton(title: "Every day", isSelected: activeDaysMask == HabitSchedule.allDaysMask) {
+                                    activeDaysMask = HabitSchedule.allDaysMask
+                                }
+                                SchedulePresetButton(title: "Weekdays", isSelected: activeDaysMask == HabitSchedule.weekdaysMask) {
+                                    activeDaysMask = HabitSchedule.weekdaysMask
+                                }
+                                SchedulePresetButton(title: "Weekends", isSelected: activeDaysMask == HabitSchedule.weekendsMask) {
+                                    activeDaysMask = HabitSchedule.weekendsMask
+                                }
+                            }
+
+                            HStack(spacing: 8) {
+                                ForEach(HabitWeekday.allCases) { day in
+                                    let isOn = HabitSchedule.isSelected(day, mask: activeDaysMask)
+                                    Button {
+                                        var mask = activeDaysMask
+                                        HabitSchedule.setSelected(day, selected: !isOn, mask: &mask)
+                                        activeDaysMask = mask
+                                    } label: {
+                                        Text(day.veryShortLabel)
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .frame(width: 34, height: 34)
+                                            .background(
+                                                Circle()
+                                                    .fill(isOn ? Color.blue : Color(.systemGray5))
+                                            )
+                                            .foregroundColor(isOn ? .white : .primary)
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
                     .padding(.horizontal, 20)
                     
@@ -159,19 +320,25 @@ struct NewHabitView: View {
         newHabit.name = habitName
         newHabit.isCompleted = false
         newHabit.reminderTime = reminderTime
+        newHabit.category = category.isEmpty ? nil : category
+        newHabit.priority = priority
+        newHabit.activeDaysMask = activeDaysMask
 
         do {
+            if !category.isEmpty {
+                categoryStore.add(category)
+            }
             try viewContext.save()
             withAnimation {
                 showingToast = true
             }
-            if let notificationIdentifier = scheduleNotification(for: newHabit) {
-                newHabit.notificationIdentifier = notificationIdentifier
-                try viewContext.save()
-            }
+            scheduleNotifications(for: newHabit)
             // Reset form
             habitName = ""
             reminderTime = nil
+            category = ""
+            priority = 0
+            activeDaysMask = HabitSchedule.allDaysMask
             isTimePickerVisible = false
         } catch {
             let nsError = error as NSError
@@ -186,31 +353,62 @@ struct NewHabitView: View {
         return formatter.string(from: reminderTime)
     }
     
-    func scheduleNotification(for habit: Habit) -> String? {
-        guard let reminderTime = reminderTime, !habit.isCompleted else {
-            return nil
-        }
+    private func scheduleNotifications(for habit: Habit) {
+        guard isReminderSet, let reminderTime else { return }
+
+        let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
+        removeNotifications(forBaseIdentifier: base)
 
         let content = UNMutableNotificationContent()
         content.title = "Reminder - \(habit.name ?? "")"
         content.body = "Don't forget to complete your habit: \(habit.name ?? "")"
         content.sound = UNNotificationSound.default
 
-        let identifier = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
-        let calendar = Calendar.current
-        let dateComponents = calendar.dateComponents([.hour, .minute], from: reminderTime)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        let hour = Calendar.current.component(.hour, from: reminderTime)
+        let minute = Calendar.current.component(.minute, from: reminderTime)
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Error scheduling notification: \(error.localizedDescription)")
-            } else {
-                print("Notification scheduled successfully")
+        let selectedDays = HabitWeekday.allCases.filter { HabitSchedule.isSelected($0, mask: activeDaysMask) }
+        for day in selectedDays {
+            var comps = DateComponents()
+            comps.weekday = day.calendarWeekday
+            comps.hour = hour
+            comps.minute = minute
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+            let identifier = "\(base)-\(day.calendarWeekday)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error { print("Error scheduling notification: \(error.localizedDescription)") }
             }
         }
 
-        return identifier
+        // Keep legacy field non-empty so existing UI logic treats reminders as enabled.
+        habit.notificationIdentifier = "\(base)-multi"
+    }
+
+    private func removeNotifications(forBaseIdentifier base: String) {
+        // Remove deterministically to avoid races with async fetch/remove.
+        let identifiers = [base, "\(base)-multi"] + (1...7).map { "\(base)-\($0)" }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+}
+
+private struct SchedulePresetButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(isSelected ? Color.blue.opacity(0.15) : Color(.systemGray6))
+                )
+                .foregroundColor(isSelected ? .blue : .primary)
+        }
     }
 }
 
