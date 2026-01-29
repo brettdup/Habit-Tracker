@@ -11,22 +11,29 @@ import UserNotifications
 @main
 struct Habit_TrackerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage("themeMode") private var themeModeRaw = AppThemeMode.system.rawValue
+    @AppStorage("accentColor") private var accentColorRaw = AppAccentColor.blue.rawValue
     let persistenceController = PersistenceController.shared
+
+    private var themeMode: AppThemeMode {
+        AppThemeMode(rawValue: themeModeRaw) ?? .system
+    }
+    
+    private var accentColor: AppAccentColor {
+        AppAccentColor(rawValue: accentColorRaw) ?? .blue
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .preferredColorScheme(themeMode.colorScheme)
+                .tint(accentColor.color)
         }
-        
     }
 }
 
-var window: UIWindow?
-    
-    // Define a key for UserDefaults
-    let lastLaunchDateKey = "LastLaunchDate"
-
+private let lastLaunchDateKey = "LastLaunchDate"
 
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 

@@ -116,7 +116,7 @@ struct HabitListView: View {
                                             .padding(.horizontal, 4)
                                         
                                         ForEach(groupedHabits[category] ?? [], id: \.self) { habit in
-                                            HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: false)
+                                            HabitRow(habit: habit, totalHabits: habits.count)
                                                 .frame(height: 80)
                                                 .transition(.scale)
                                         }
@@ -124,7 +124,7 @@ struct HabitListView: View {
                                 }
                             } else {
                                 ForEach(filteredHabits, id: \.self) { habit in
-                                    HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: true)
+                                    HabitRow(habit: habit, totalHabits: habits.count)
                                         .frame(height: 80)
                                         .transition(.scale)
                                 }
@@ -331,7 +331,6 @@ struct HabitRow: View {
     @State private var isCheckboxTapped = false
     @State private var isEditing = false
     var totalHabits: Int
-    var showCategoryChip: Bool = true
 
     var body: some View {
         Group {
@@ -360,6 +359,11 @@ struct HabitRow: View {
     @ViewBuilder
     private var content: some View {
         HStack(spacing: 16) {
+            Image(systemName: habit.iconName ?? HabitIcons.defaultIcon)
+                .font(.system(size: 22))
+                .foregroundColor(habit.isCompleted ? .blue : .primary)
+                .frame(width: 36, height: 36)
+            
             CheckBox(isChecked: $habit.isCompleted, toggleCompletion: toggleCompletion)
                 .foregroundColor(habit.isCompleted ? .blue : .gray)
                 .frame(width: 30)
@@ -377,24 +381,6 @@ struct HabitRow: View {
                             Image(systemName: "bell.fill")
                                 .font(.system(size: 10))
                             Text(formatReminderTime(reminderTime))
-                                .font(.system(size: 12))
-                        }
-                        .foregroundColor(.secondary)
-                    }
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 10))
-                        Text(HabitSchedule.label(for: habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask))
-                            .font(.system(size: 12))
-                    }
-                    .foregroundColor(.secondary)
-                    
-                    if showCategoryChip, let category = habit.category, !category.isEmpty {
-                        HStack(spacing: 4) {
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 10))
-                            Text(category)
                                 .font(.system(size: 12))
                         }
                         .foregroundColor(.secondary)
@@ -662,7 +648,7 @@ struct CategoryHabitsView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(Array(habits), id: \.self) { habit in
-                            HabitRow(habit: habit, totalHabits: habits.count, showCategoryChip: false)
+                            HabitRow(habit: habit, totalHabits: habits.count)
                                 .frame(height: 80)
                         }
                     }
@@ -778,10 +764,23 @@ struct ContentView_Previews: PreviewProvider {
     }
 
     private static func createSampleData(in context: NSManagedObjectContext) {
-        for i in 1...5 {
+        let defaults: [(name: String, icon: String, reminderHour: Int?, completed: Bool)] = [
+            ("Morning meditation", "brain.head.profile", 7, true),
+            ("Read 20 minutes", "book.fill", 21, false),
+            ("Exercise", "figure.run", 8, true),
+            ("Drink water", "drop.fill", nil, false),
+            ("Sleep by 10pm", "bed.double.fill", 22, false)
+        ]
+        let calendar = Calendar.current
+        for (name, icon, hour, completed) in defaults {
             let habit = Habit(context: context)
-            habit.name = "Sample Habit \(i)"
-            habit.isCompleted = i % 2 == 0
+            habit.name = name
+            habit.iconName = icon
+            habit.isCompleted = completed
+            habit.timestamp = Date()
+            if let hour = hour {
+                habit.reminderTime = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: Date())
+            }
         }
         do {
             try context.save()

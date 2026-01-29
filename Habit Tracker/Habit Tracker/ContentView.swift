@@ -62,9 +62,6 @@ struct ContentView: View {
             }
             
         }
-        .background(Color.pink) // Set default background color here
-
-        
     }
 }
 

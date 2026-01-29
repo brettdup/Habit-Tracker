@@ -4,19 +4,46 @@ import CoreData
 @available(iOS 18.0, *)
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
-    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @AppStorage("themeMode") private var themeModeRaw = AppThemeMode.system.rawValue
+    @AppStorage("accentColor") private var accentColorRaw = AppAccentColor.blue.rawValue
     @AppStorage("resetTime") private var resetTime = Calendar.current.startOfDay(for: Date())
     @Environment(\.colorScheme) private var colorScheme
     
+    private var themeMode: AppThemeMode {
+        get { AppThemeMode(rawValue: themeModeRaw) ?? .system }
+        set { themeModeRaw = newValue.rawValue }
+    }
+    
+    private var accentColor: AppAccentColor {
+        get { AppAccentColor(rawValue: accentColorRaw) ?? .blue }
+        set { accentColorRaw = newValue.rawValue }
+    }
+    
     var body: some View {
         Form {
+            Section(header: Text("Appearance")) {
+                Picker(selection: $themeModeRaw, label: Label("Theme", systemImage: "paintbrush.fill")) {
+                    ForEach(AppThemeMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.rawValue).tag(mode.rawValue)
+                    }
+                }
+                
+                Picker(selection: $accentColorRaw, label: Label("Accent Color", systemImage: "paintpalette.fill")) {
+                    ForEach(AppAccentColor.allCases, id: \.rawValue) { color in
+                        HStack {
+                            Circle()
+                                .fill(color.color)
+                                .frame(width: 20, height: 20)
+                            Text(color.rawValue)
+                        }
+                        .tag(color.rawValue)
+                    }
+                }
+            }
+            
             Section(header: Text("Preferences")) {
                 Toggle(isOn: $notificationsEnabled) {
                     Label("Enable Notifications", systemImage: "bell.fill")
-                }
-                
-                Toggle(isOn: $darkModeEnabled) {
-                    Label("Dark Mode", systemImage: "moon.fill")
                 }
                 
                 DatePicker(

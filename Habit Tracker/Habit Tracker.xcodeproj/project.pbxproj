@@ -13,6 +13,9 @@
 		9E42A9D72BE540B900CDF3A7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */; };
 		9E7C6C012D1A9A1C00B7F2D1 /* CategoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */; };
 		9E7C6C032D1A9A4000B7F2D1 /* HabitSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */; };
+		9E7C6C052D1B2A1000B7F2D1 /* HabitIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */; };
+		9E7C6C072D1B2A2000B7F2D1 /* IconPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */; };
+		9E7C6C092D1B2B0000B7F2D1 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */; };
 		9E43AA532BED028B00B03A44 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */; };
 		9E5446852BE958E9002F7D21 /* HabitDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5446842BE958E9002F7D21 /* HabitDetailView.swift */; };
 		9EA78C582BE64CC4003E272C /* ScheduledNotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA78C572BE64CC4003E272C /* ScheduledNotificationsView.swift */; };
@@ -64,6 +67,9 @@
 		9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryStore.swift; sourceTree = "<group>"; };
 		9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitSchedule.swift; sourceTree = "<group>"; };
+		9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitIcons.swift; sourceTree = "<group>"; };
+		9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconPickerView.swift; sourceTree = "<group>"; };
+		9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
 		9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		9E54466F2BE94CAD002F7D21 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		9E5446712BE94CAD002F7D21 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -146,6 +152,9 @@
 				9EE30AD52BE50FC4004991EB /* ContentView.swift */,
 				9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */,
 				9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */,
+				9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */,
+				9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */,
+				9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */,
 				9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */,
 				9E42A9D42BE5406600CDF3A7 /* HabitListView.swift */,
 				9E42A9D22BE5401900CDF3A7 /* NewHabitView.swift */,
@@ -329,6 +338,9 @@
 				9E42A9D52BE5406600CDF3A7 /* HabitListView.swift in Sources */,
 				9E7C6C012D1A9A1C00B7F2D1 /* CategoryStore.swift in Sources */,
 				9E7C6C032D1A9A4000B7F2D1 /* HabitSchedule.swift in Sources */,
+				9E7C6C052D1B2A1000B7F2D1 /* HabitIcons.swift in Sources */,
+				9E7C6C072D1B2A2000B7F2D1 /* IconPickerView.swift in Sources */,
+				9E7C6C092D1B2B0000B7F2D1 /* ThemeStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

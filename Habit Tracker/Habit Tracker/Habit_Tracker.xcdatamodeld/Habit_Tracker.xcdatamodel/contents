@@ -3,6 +3,7 @@
     <entity name="Habit" representedClassName="Habit" syncable="YES" codeGenerationType="class">
         <attribute name="activeDaysMask" optional="YES" attributeType="Integer 16" defaultValueString="127" usesScalarValueType="YES"/>
         <attribute name="category" optional="YES" attributeType="String"/>
+        <attribute name="iconName" optional="YES" attributeType="String"/>
         <attribute name="isCompleted" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="notificationIdentifier" optional="YES" attributeType="String"/>

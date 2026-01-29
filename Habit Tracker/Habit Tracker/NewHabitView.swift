@@ -16,6 +16,8 @@ struct NewHabitView: View {
     @State private var priority: Int16 = 0
     @State private var showCategoryPicker = false
     @State private var activeDaysMask: Int16 = HabitSchedule.allDaysMask
+    @State private var iconName: String = HabitIcons.defaultIcon
+    @State private var showIconPicker = false
     
     private var existingCategories: [String] { categoryStore.categories }
     
@@ -57,6 +59,40 @@ struct NewHabitView: View {
                             .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
                     .padding(.horizontal, 20)
+                    
+                    // Icon Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Icon", systemImage: "square.grid.2x2")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        Button(action: { showIconPicker = true }) {
+                            HStack(spacing: 16) {
+                                Image(systemName: iconName)
+                                    .font(.system(size: 28))
+                                    .foregroundColor(.blue)
+                                    .frame(width: 52, height: 52)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(Circle())
+                                Text("Choose Icon")
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                Spacer(minLength: 12)
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .sheet(isPresented: $showIconPicker) {
+                        IconPickerView(selectedIcon: $iconName)
+                    }
                     
                     // Category Card
                     VStack(alignment: .leading, spacing: 12) {
@@ -323,6 +359,7 @@ struct NewHabitView: View {
         newHabit.category = category.isEmpty ? nil : category
         newHabit.priority = priority
         newHabit.activeDaysMask = activeDaysMask
+        newHabit.iconName = iconName
 
         do {
             if !category.isEmpty {
@@ -339,6 +376,7 @@ struct NewHabitView: View {
             category = ""
             priority = 0
             activeDaysMask = HabitSchedule.allDaysMask
+            iconName = HabitIcons.defaultIcon
             isTimePickerVisible = false
         } catch {
             let nsError = error as NSError

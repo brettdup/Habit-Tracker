@@ -20,6 +20,8 @@ struct HabitDetailView: View {
     @State private var priority: Int16 = 0
     @State private var showCategoryPicker = false
     @State private var activeDaysMask: Int16 = HabitSchedule.allDaysMask
+    @State private var iconName: String = HabitIcons.defaultIcon
+    @State private var showIconPicker = false
     
     var viewContext: NSManagedObjectContext
     
@@ -31,6 +33,7 @@ struct HabitDetailView: View {
         _category = State(initialValue: habit.category ?? "")
         _priority = State(initialValue: habit.priority)
         _activeDaysMask = State(initialValue: habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask)
+        _iconName = State(initialValue: habit.iconName ?? HabitIcons.defaultIcon)
         self.viewContext = viewContext
         if let notificationIdentifier = habit.notificationIdentifier, !notificationIdentifier.isEmpty {
             _isReminderSet = State(initialValue: true)
@@ -85,6 +88,40 @@ struct HabitDetailView: View {
                                 )
                         }
                         .padding(.horizontal)
+                        
+                        // Icon Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Icon", systemImage: "square.grid.2x2")
+                                .font(.headline)
+                                .foregroundColor(.primary.opacity(0.8))
+                            
+                            Button(action: { showIconPicker = true }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: iconName)
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.blue)
+                                        .frame(width: 52, height: 52)
+                                        .background(Color.blue.opacity(0.1))
+                                        .clipShape(Circle())
+                                    Text("Change Icon")
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    Spacer(minLength: 12)
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(.gray)
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(color: Color.primary.opacity(0.1), radius: 8, x: 0, y: 4)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .sheet(isPresented: $showIconPicker) {
+                            IconPickerView(selectedIcon: $iconName)
+                        }
                         
                         // Category Section
                         VStack(alignment: .leading, spacing: 12) {
@@ -287,18 +324,8 @@ struct HabitDetailView: View {
                         }
                         .padding(.horizontal)
                         
-                        // Action Buttons
+                        // Delete Button
                         VStack(spacing: 16) {
-                            Button(action: saveChanges) {
-                                Text("Save Changes")
-                                    .fontWeight(.semibold)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(12)
-                            }
-                            
                             Button(action: { showAlert = true }) {
                                 Text("Delete Habit")
                                     .fontWeight(.medium)
@@ -325,6 +352,12 @@ struct HabitDetailView: View {
                     Button("Cancel") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveChanges()
+                    }
+                    .fontWeight(.semibold)
                 }
             }
             .alert(isPresented: $showAlert, content: deleteAlert)
@@ -403,6 +436,7 @@ struct HabitDetailView: View {
         habit.category = category.isEmpty ? nil : category
         habit.priority = priority
         habit.activeDaysMask = activeDaysMask
+        habit.iconName = iconName
         
         // Update reminder time based on toggle state
         if !isReminderSet {
