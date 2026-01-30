@@ -7,6 +7,33 @@
 
 import SwiftUI
 import UserNotifications
+import CoreData
+
+// MARK: - Notification Category & Actions
+
+private enum HabitNotificationCategory {
+    static let identifier = "HABIT_REMINDER"
+
+    static func register() {
+        let completeAction = UNNotificationAction(
+            identifier: "COMPLETE",
+            title: "Complete",
+            options: []
+        )
+        let snoozeAction = UNNotificationAction(
+            identifier: "SNOOZE",
+            title: "Snooze 15 min",
+            options: []
+        )
+        let category = UNNotificationCategory(
+            identifier: identifier,
+            actions: [completeAction, snoozeAction],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+}
 
 @main
 struct Habit_TrackerApp: App {
@@ -38,7 +65,8 @@ private let lastLaunchDateKey = "LastLaunchDate"
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Request authorization for notifications
+        HabitNotificationCategory.register()
+
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if granted {
                 print("Notification authorization granted")
@@ -47,16 +75,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             }
         }
         if isNextDay() {
-                    // Perform actions for the next day
-                    // For example, reset daily tasks, update data, etc.
+            // Perform actions for the next day
         }
-        
-        
-        // Set the delegate for handling notifications
+
         UNUserNotificationCenter.current().delegate = self
         UserDefaults.standard.set(Date(), forKey: lastLaunchDateKey)
 
-        
         return true
     }
     
@@ -68,8 +92,69 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
 
     // Handle user interactions with notifications
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Handle user's response to the notification
+        let userInfo = response.notification.request.content.userInfo
+        guard let habitURIString = userInfo["habitObjectIDURI"] as? String,
+              let habitURI = URL(string: habitURIString) else {
+            completionHandler()
+            return
+        }
+
+        let context = PersistenceController.shared.container.viewContext
+
+        switch response.actionIdentifier {
+        case "COMPLETE":
+            handleCompleteAction(habitURI: habitURI, context: context)
+        case "SNOOZE":
+            handleSnoozeAction(habitURI: habitURI)
+        default:
+            break
+        }
         completionHandler()
+    }
+
+    private func handleCompleteAction(habitURI: URL, context: NSManagedObjectContext) {
+        guard let coordinator = context.persistentStoreCoordinator,
+              let objectID = coordinator.managedObjectID(forURIRepresentation: habitURI),
+              let habit = try? context.existingObject(with: objectID) as? Habit else { return }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        habit.isCompleted = true
+
+        let fetchRequest: NSFetchRequest<Habit> = Habit.fetchRequest()
+        guard let allHabits = try? context.fetch(fetchRequest) else { return }
+        let activeToday = allHabits.filter { h in
+            HabitSchedule.isActive(on: Date(), mask: h.activeDaysMask == 0 ? HabitSchedule.allDaysMask : h.activeDaysMask)
+        }
+        let totalCount = Int16(activeToday.count)
+
+        let record = HabitCompletionRecord(context: context)
+        record.date = today
+        record.habitName = habit.name
+        record.isCompleted = true
+        record.totalHabits = totalCount
+
+        try? context.save()
+    }
+
+    private func handleSnoozeAction(habitURI: URL) {
+        let context = PersistenceController.shared.container.viewContext
+        guard let objectID = context.persistentStoreCoordinator?.managedObjectID(forURIRepresentation: habitURI),
+              let habit = try? context.existingObject(with: objectID) as? Habit,
+              let habitName = habit.name else { return }
+
+        let base = "habitReminder-\(habitURI.absoluteString)"
+        let snoozeID = "\(base)-snooze-\(Date().timeIntervalSince1970)"
+
+        let content = UNMutableNotificationContent()
+        content.title = "Reminder - \(habitName)"
+        content.body = "Don't forget to complete your habit: \(habitName)"
+        content.sound = .default
+        content.categoryIdentifier = HabitNotificationCategory.identifier
+        content.userInfo = ["habitObjectIDURI": habitURI.absoluteString]
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false)
+        let request = UNNotificationRequest(identifier: snoozeID, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request) { _ in }
     }
     
     func isNextDay() -> Bool {

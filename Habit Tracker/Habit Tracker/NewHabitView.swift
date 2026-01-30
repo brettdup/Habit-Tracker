@@ -418,10 +418,13 @@ struct NewHabitView: View {
         let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
         removeNotifications(forBaseIdentifier: base)
 
+        let habitURI = habit.objectID.uriRepresentation().absoluteString
         let content = UNMutableNotificationContent()
         content.title = "Reminder - \(habit.name ?? "")"
         content.body = "Don't forget to complete your habit: \(habit.name ?? "")"
         content.sound = UNNotificationSound.default
+        content.categoryIdentifier = "HABIT_REMINDER"
+        content.userInfo = ["habitObjectIDURI": habitURI]
 
         let hour = Calendar.current.component(.hour, from: reminderTime)
         let minute = Calendar.current.component(.minute, from: reminderTime)

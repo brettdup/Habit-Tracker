@@ -391,24 +391,16 @@ struct HabitDetailView: View {
     }
 
     func deleteHabit() {
-        // Delete any existing notifications first
-        if let notificationIdentifier = habit.notificationIdentifier {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [notificationIdentifier])
-        }
-        
-        // Also delete using the habit's object ID as identifier since that's how we create them
-        let identifier = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-        
-        // Delete the habit from Core Data
+        let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
+        deleteNotifications(forBaseIdentifier: base)
+
         viewContext.delete(habit)
 
         do {
             try viewContext.save()
             presentationMode.wrappedValue.dismiss()
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Error deleting habit: \(error.localizedDescription)")
         }
     }
 
@@ -472,10 +464,13 @@ struct HabitDetailView: View {
         let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
         deleteNotifications(forBaseIdentifier: base)
 
+        let habitURI = habit.objectID.uriRepresentation().absoluteString
         let content = UNMutableNotificationContent()
         content.title = "Reminder - \(habit.name ?? "")"
         content.body = "Don't forget to complete your habit: \(habit.name ?? "")"
         content.sound = UNNotificationSound.default
+        content.categoryIdentifier = "HABIT_REMINDER"
+        content.userInfo = ["habitObjectIDURI": habitURI]
 
         let hour = Calendar.current.component(.hour, from: reminderTime)
         let minute = Calendar.current.component(.minute, from: reminderTime)

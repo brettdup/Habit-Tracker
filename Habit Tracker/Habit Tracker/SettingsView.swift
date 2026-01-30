@@ -6,7 +6,6 @@ struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @AppStorage("themeMode") private var themeModeRaw = AppThemeMode.system.rawValue
     @AppStorage("accentColor") private var accentColorRaw = AppAccentColor.blue.rawValue
-    @AppStorage("resetTime") private var resetTime = Calendar.current.startOfDay(for: Date())
     @Environment(\.colorScheme) private var colorScheme
     
     private var themeMode: AppThemeMode {
@@ -56,10 +55,6 @@ struct SettingsView: View {
             Section(header: Text("Preferences")) {
                 Toggle(isOn: $notificationsEnabled) {
                     Label("Enable Notifications", systemImage: "bell.fill")
-                }
-                
-                DatePicker(selection: $resetTime, displayedComponents: .hourAndMinute) {
-                    Label("Daily Reset Time", systemImage: "clock")
                 }
             }
             

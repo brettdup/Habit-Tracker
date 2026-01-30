@@ -2,6 +2,7 @@ import SwiftUI
 import CoreData
 import Combine
 import UIKit
+import UserNotifications
 
 enum SortOption: String, CaseIterable {
     case name = "Name"
@@ -248,12 +249,10 @@ struct HabitListView: View {
         }
     }
     
-    // Keep other existing functions unchanged
     private func deleteReminders(for habit: Habit) {
-        guard let reminderTime = habit.reminderTime else { return }
-        
-        let identifier = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+        let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
+        let identifiers = [base, "\(base)-multi"] + (1...7).map { "\(base)-\($0)" }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
     }
     
     private func formatReminderTime(_ date: Date) -> String {
@@ -460,16 +459,12 @@ struct HabitRow: View {
 
             do {
                 let records = try viewContext.fetch(fetchRequest)
-                print("Found \(records.count) records to delete for habit: \(habit.name ?? "")")
                 for record in records {
-                    print("Deleting record: \(record)")
                     viewContext.delete(record)
                 }
                 try viewContext.save()
-                print("Records deleted successfully")
             } catch {
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+                print("Error removing completion record: \(error.localizedDescription)")
             }
         } else {
             addCompletionRecord(for: habit)
@@ -477,13 +472,11 @@ struct HabitRow: View {
         do {
             try viewContext.save()
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Error saving habit completion: \(error.localizedDescription)")
         }
     }
 
     private func addCompletionRecord(for habit: Habit) {
-        print(habit)
         let newCompletion = HabitCompletionRecord(context: viewContext)
         newCompletion.date = Calendar.current.startOfDay(for: Date()) // Save only the day portion of the date
         newCompletion.habitName = habit.name
@@ -493,8 +486,7 @@ struct HabitRow: View {
         do {
             try viewContext.save()
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Error saving completion record: \(error.localizedDescription)")
         }
     }
 }

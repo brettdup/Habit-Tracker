@@ -34,8 +34,7 @@ struct PersistenceController {
         do {
             try viewContext.save()
         } catch {
-            let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Preview data failed to save: \(error.localizedDescription)")
         }
         return result
     }()
@@ -45,20 +44,17 @@ struct PersistenceController {
     init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "Habit_Tracker")
         if inMemory {
-            container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
-        } else {
-            guard let description = container.persistentStoreDescriptions.first else {
-                fatalError("Failed to retrieve a persistent store description.")
-            }
+            container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
+        } else if let description = container.persistentStoreDescriptions.first {
             // Required for stores that were previously opened with CloudKit (persistent history).
             // Without this, Core Data forces the store into read-only mode.
             description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         }
-        container.loadPersistentStores(completionHandler: { (storeDescription, error) in
+        container.loadPersistentStores { _, error in
             if let error = error as NSError? {
-                fatalError("Unresolved error \(error), \(error.userInfo)")
+                print("Core Data failed to load persistent store: \(error), \(error.userInfo)")
             }
-        })
+        }
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
