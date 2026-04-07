@@ -1,12 +1,12 @@
 import SwiftUI
 import CoreData
 
-@available(iOS 18.0, *)
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @AppStorage("themeMode") private var themeModeRaw = AppThemeMode.system.rawValue
     @AppStorage("accentColor") private var accentColorRaw = AppAccentColor.blue.rawValue
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.managedObjectContext) private var viewContext
+    @State private var showNotificationAlert = false
     
     private var themeMode: AppThemeMode {
         get { AppThemeMode(rawValue: themeModeRaw) ?? .system }
@@ -19,20 +19,8 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
-                    Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
-                    Color(.systemBackground)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            Form {
-                Section(header: Text("Appearance")) {
+        AppFormContainer {
+            Section(header: Text("Appearance")) {
                 Picker(selection: $themeModeRaw, label: Label("Theme", systemImage: "paintbrush.fill")) {
                     ForEach(AppThemeMode.allCases, id: \.rawValue) { mode in
                         Text(mode.rawValue).tag(mode.rawValue)
@@ -51,7 +39,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            
+
             Section(header: Text("Preferences")) {
                 Toggle(isOn: $notificationsEnabled) {
                     Label("Enable Notifications", systemImage: "bell.fill")
@@ -74,14 +62,25 @@ struct SettingsView: View {
                     Label("Terms of Service", systemImage: "doc.text")
                 }
             }
-            }
-            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
+        .onChange(of: notificationsEnabled) { _, enabled in
+            HabitReminderScheduler.updateGlobalNotifications(enabled: enabled, in: viewContext) { granted in
+                if !granted {
+                    DispatchQueue.main.async {
+                        showNotificationAlert = true
+                    }
+                }
+            }
+        }
+        .alert("Notifications Unavailable", isPresented: $showNotificationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Enable notifications in iOS Settings before turning reminders back on.")
+        }
     }
 }
 
-@available(iOS 18.0, *)
 private struct AccentColorPickerView: View {
     @Binding var selection: String
 
@@ -112,9 +111,5 @@ private struct AccentColorPickerView: View {
 }
 
 #Preview {
-    if #available(iOS 18.0, *) {
-        SettingsView()
-    } else {
-        // Fallback on earlier versions
-    }
+    SettingsView()
 }

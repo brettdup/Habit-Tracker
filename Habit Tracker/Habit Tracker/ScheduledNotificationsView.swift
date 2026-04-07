@@ -10,217 +10,508 @@ import CoreData
 import UserNotifications
 
 private struct ReminderGroup: Identifiable {
-    let id: String // base identifier
+    let id: String
     let title: String
     let body: String
-    let requests: [UNNotificationRequest]
-    let weekdays: [Int] // 1=Sun ... 7=Sat
+    let scheduleText: String
     let nextTriggerDate: Date?
+    let todaysRemainingTriggerDates: [Date]
+    let pendingNextTriggerDate: Date?
+    let pendingTodayTriggerDates: [Date]
+    let displayTime: Date?
+    let pendingCount: Int
+    let expectedPendingCount: Int
+    let hasPendingMismatch: Bool
+}
+
+private struct RandomNudgeGroup: Identifiable {
+    let id: UUID
+    let nudge: RandomNudge
+    let requests: [UNNotificationRequest]
+    let nextTriggerDate: Date?
+    let todaysTriggerDates: [Date]
 }
 
 struct ScheduledNotificationsView: View {
+    @Environment(\.managedObjectContext) private var viewContext
     @State private var reminderGroups: [ReminderGroup] = []
-    @Environment(\.colorScheme) var colorScheme
+    @State private var randomNudgeGroups: [RandomNudgeGroup] = []
+    @State private var pendingDeleteGroup: ReminderGroup?
+    @State private var pendingDeleteNudgeGroup: RandomNudgeGroup?
+    @State private var editingNudge: RandomNudge?
+    @State private var showAddRandomNudge = false
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.accentColor.opacity(colorScheme == .dark ? 0.4 : 0.2),
-                    Color.accentColor.opacity(colorScheme == .dark ? 0.2 : 0.1),
-                    Color(.systemBackground)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    if reminderGroups.isEmpty {
-                        VStack(spacing: 24) {
-                            Image(systemName: "bell.badge")
-                                .font(.system(size: 64, weight: .light))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.6)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            
-                            VStack(spacing: 12) {
-                                Text("No Active Reminders")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(.primary)
-                                
-                                Text("Add reminders to your habits to help stay on track")
-                                    .font(.body)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 32)
-                            }
-                        }
-                        .padding(24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(colorScheme == .dark ? Color(uiColor: .systemGray6) : Color(uiColor: .systemBackground))
-                                .shadow(radius: 8)
-                        )
-                        .padding(.horizontal)
-                    } else {
-                        ForEach(reminderGroups) { group in
-                            ReminderGroupCard(group: group) {
-                                removeNotifications(withIdentifiers: group.requests.map(\.identifier))
-                            }
+        AppListContainer {
+            if reminderGroups.isEmpty && randomNudgeGroups.isEmpty {
+                Section {
+                    ContentUnavailableView {
+                        Label("No Active Notifications", systemImage: "bell.slash")
+                    } description: {
+                        Text("Add habit reminders or random nudges to see scheduled notifications here.")
+                    }
+                }
+            } else {
+                if !randomNudgeGroups.isEmpty {
+                    Section {
+                        Text("Random nudges are separate from habits and do not track completions.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Random Nudges")
+                    }
+
+                    Section {
+                        ForEach(randomNudgeGroups) { group in
+                            randomNudgeListRow(for: group)
                         }
                     }
                 }
-                .padding()
+
+                if !reminderGroups.isEmpty {
+                    Section("Habit Reminders") {
+                        ForEach(reminderGroups) { group in
+                            ReminderRow(group: group)
+                                .contentShape(Rectangle())
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button("Remove", role: .destructive) {
+                                        pendingDeleteGroup = group
+                                    }
+                                }
+                                .contextMenu {
+                                    Button("Remove Reminder", role: .destructive) {
+                                        pendingDeleteGroup = group
+                                    }
+                                }
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("Reminders")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear {
-            fetchScheduledNotifications()
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showAddRandomNudge = true
+                } label: {
+                    Label("Add Random Nudge", systemImage: "sparkles")
+                }
+            }
         }
+        .onAppear {
+            refreshScheduledNotificationsAfterQueueSettles()
+        }
+        .alert("Remove reminder?", isPresented: deleteConfirmationBinding) {
+            Button("Cancel", role: .cancel) {
+                pendingDeleteGroup = nil
+            }
+            Button("Remove", role: .destructive) {
+                if let group = pendingDeleteGroup {
+                    removeReminderGroup(group)
+                }
+                pendingDeleteGroup = nil
+            }
+        } message: {
+            if let group = pendingDeleteGroup {
+                Text("This will remove \(group.pendingCount) scheduled reminder\(group.pendingCount == 1 ? "" : "s") for this habit.")
+            } else {
+                Text("This reminder will be removed.")
+            }
+        }
+        .alert("Remove random nudge?", isPresented: deleteNudgeConfirmationBinding) {
+            Button("Cancel", role: .cancel) {
+                pendingDeleteNudgeGroup = nil
+            }
+            Button("Remove", role: .destructive) {
+                if let group = pendingDeleteNudgeGroup {
+                    removeRandomNudgeGroup(group)
+                }
+                pendingDeleteNudgeGroup = nil
+            }
+        } message: {
+            if let group = pendingDeleteNudgeGroup {
+                Text("This will remove all scheduled nudges for \"\(group.nudge.title)\".")
+            } else {
+                Text("This random nudge will be removed.")
+            }
+        }
+        .sheet(isPresented: $showAddRandomNudge, onDismiss: refreshScheduledNotificationsAfterQueueSettles) {
+            AddRandomNudgeView {
+                refreshScheduledNotificationsAfterQueueSettles()
+            }
+        }
+        .sheet(item: $editingNudge, onDismiss: refreshScheduledNotificationsAfterQueueSettles) { nudge in
+            AddRandomNudgeView(existingNudge: nudge) {
+                refreshScheduledNotificationsAfterQueueSettles()
+            }
+        }
+    }
+
+    private var deleteConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { pendingDeleteGroup != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingDeleteGroup = nil
+                }
+            }
+        )
+    }
+
+    private var deleteNudgeConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { pendingDeleteNudgeGroup != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingDeleteNudgeGroup = nil
+                }
+            }
+        )
     }
 
     private func fetchScheduledNotifications() {
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             DispatchQueue.main.async {
                 let habitRequests = requests.filter { $0.identifier.hasPrefix("habitReminder-") }
-                self.reminderGroups = groupRequests(habitRequests)
+                let nudgeRequests = requests.filter { $0.identifier.hasPrefix("randomNudge-") }
+                reminderGroups = groupRequests(habitRequests)
                     .sorted(by: { g1, g2 in
                         let d1 = g1.nextTriggerDate ?? Date.distantFuture
                         let d2 = g2.nextTriggerDate ?? Date.distantFuture
                         if d1 != d2 { return d1 < d2 }
                         return g1.title < g2.title
                     })
+                randomNudgeGroups = groupRandomNudgeRequests(nudgeRequests)
+                    .sorted(by: { g1, g2 in
+                        let d1 = g1.nextTriggerDate ?? Date.distantFuture
+                        let d2 = g2.nextTriggerDate ?? Date.distantFuture
+                        if d1 != d2 { return d1 < d2 }
+                        return g1.nudge.title < g2.nudge.title
+                    })
             }
         }
     }
 
-    private func removeNotifications(withIdentifiers identifiers: [String]) {
-        withAnimation {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    private func refreshScheduledNotificationsAfterQueueSettles() {
+        fetchScheduledNotifications()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            fetchScheduledNotifications()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
             fetchScheduledNotifications()
         }
     }
 
+    @ViewBuilder
+    private func randomNudgeListRow(for group: RandomNudgeGroup) -> some View {
+        RandomNudgeRow(group: group)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                editingNudge = group.nudge
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button {
+                    editingNudge = group.nudge
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(.accentColor)
+
+                Button("Remove", role: .destructive) {
+                    pendingDeleteNudgeGroup = group
+                }
+            }
+            .contextMenu {
+                Button("Edit Random Nudge") {
+                    editingNudge = group.nudge
+                }
+
+                Button("Remove Random Nudge", role: .destructive) {
+                    pendingDeleteNudgeGroup = group
+                }
+            }
+    }
+
+    private func removeNotifications(withIdentifiers identifiers: [String]) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        fetchScheduledNotifications()
+    }
+
+    private func removeReminderGroup(_ group: ReminderGroup) {
+        clearReminderState(forBaseIdentifier: group.id)
+        HabitReminderScheduler.removeNotifications(forBaseIdentifier: group.id)
+        fetchScheduledNotifications()
+    }
+
+    private func removeRandomNudgeGroup(_ group: RandomNudgeGroup) {
+        RandomNudgeStore.remove(id: group.id)
+        RandomNudgeGeneratedScheduleStore.clear(nudgeID: group.id)
+        RandomNudgeScheduler.removePending(for: group.id)
+        refreshScheduledNotificationsAfterQueueSettles()
+    }
+
+    private func clearReminderState(forBaseIdentifier baseIdentifier: String) {
+        let request: NSFetchRequest<Habit> = Habit.fetchRequest()
+        request.fetchLimit = 1
+
+        guard let habits = try? viewContext.fetch(request),
+              let habit = habits.first(where: { HabitReminderScheduler.baseIdentifier(for: $0) == baseIdentifier }) else {
+            return
+        }
+
+        habit.reminderTime = nil
+        habit.notificationIdentifier = nil
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error clearing reminder state: \(error.localizedDescription)")
+        }
+    }
+
     private func groupRequests(_ requests: [UNNotificationRequest]) -> [ReminderGroup] {
-        let grouped = Dictionary(grouping: requests, by: { baseIdentifier(from: $0.identifier) })
-        return grouped.map { base, reqs in
-            let sortedReqs = reqs.sorted { ($0.identifier) < ($1.identifier) }
-            let title = sortedReqs.first?.content.title ?? "Reminder"
-            let body = sortedReqs.first?.content.body ?? ""
-            let weekdays = sortedReqs.compactMap { weekday(from: $0.identifier) }.sorted()
-            let nextDate = sortedReqs
-                .compactMap { ( $0.trigger as? UNCalendarNotificationTrigger )?.nextTriggerDate() }
-                .min()
+        let request: NSFetchRequest<Habit> = Habit.fetchRequest()
+        guard let habits = try? viewContext.fetch(request) else { return [] }
+
+        return habits.compactMap { habit in
+            guard habit.reminderTime != nil else { return nil }
+
+            let base = HabitReminderScheduler.baseIdentifier(for: habit)
+            let matchingRequests = requests.filter { request in
+                request.identifier == base || request.identifier.hasPrefix("\(base)-")
+            }
+            let upcomingDates = nextReminderDates(for: habit, limit: 7)
+            let nextDate = upcomingDates.first
+            let todaysRemainingDates = upcomingDates.filter { Calendar.current.isDateInToday($0) }
+            let pendingDates = matchingRequests
+                .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+                .sorted()
+            let pendingTodayDates = pendingDates.filter { Calendar.current.isDateInToday($0) }
+            let expectedPendingCount = expectedPendingRequestCount(for: habit)
+
             return ReminderGroup(
                 id: base,
-                title: title,
-                body: body,
-                requests: sortedReqs,
-                weekdays: weekdays,
-                nextTriggerDate: nextDate
+                title: "Reminder - \(habit.name ?? "")",
+                body: "Don't forget to complete your habit: \(habit.name ?? "")",
+                scheduleText: HabitScheduleResolver.label(for: habit),
+                nextTriggerDate: nextDate,
+                todaysRemainingTriggerDates: todaysRemainingDates,
+                pendingNextTriggerDate: pendingDates.first,
+                pendingTodayTriggerDates: pendingTodayDates,
+                displayTime: habit.reminderTime,
+                pendingCount: matchingRequests.count,
+                expectedPendingCount: expectedPendingCount,
+                hasPendingMismatch: hasPendingMismatch(
+                    habit: habit,
+                    pendingCount: matchingRequests.count,
+                    expectedPendingCount: expectedPendingCount,
+                    expectedNextDate: nextDate,
+                    pendingNextDate: pendingDates.first
+                )
             )
         }
     }
 
-    /// identifier format: "habitReminder-<habitURI>-<weekdayInt>"
-    /// We recover the base by stripping a trailing "-<1..7>" segment, if present.
-    private func baseIdentifier(from identifier: String) -> String {
-        let parts = identifier.split(separator: "-")
-        guard parts.count >= 2, let last = parts.last, let n = Int(last), (1...7).contains(n) else {
-            return identifier
+    private func nextReminderDates(for habit: Habit, limit: Int) -> [Date] {
+        guard let reminderTime = habit.reminderTime else { return [] }
+
+        let calendar = Calendar.current
+        let now = Date()
+        let startDay = calendar.startOfDay(for: now)
+        let hour = calendar.component(.hour, from: reminderTime)
+        let minute = calendar.component(.minute, from: reminderTime)
+        var results: [Date] = []
+
+        for offset in 0..<14 {
+            guard results.count < limit else { break }
+            guard let day = calendar.date(byAdding: .day, value: offset, to: startDay) else { continue }
+            guard HabitScheduleResolver.isActive(habit: habit, on: day, calendar: calendar) else { continue }
+            guard let fireDate = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day) else { continue }
+            guard fireDate > now else { continue }
+            results.append(fireDate)
         }
-        return parts.dropLast().joined(separator: "-")
+
+        return results
     }
 
-    private func weekday(from identifier: String) -> Int? {
-        let parts = identifier.split(separator: "-")
-        guard let last = parts.last, let n = Int(last), (1...7).contains(n) else { return nil }
-        return n
+    private func groupRandomNudgeRequests(_ requests: [UNNotificationRequest]) -> [RandomNudgeGroup] {
+        let nudgesByID = Dictionary(uniqueKeysWithValues: RandomNudgeStore.fetchAll().map { ($0.id, $0) })
+        let grouped = Dictionary(grouping: requests, by: { randomNudgeID(from: $0.identifier) })
+
+        return grouped.compactMap { id, reqs in
+            guard let id, let nudge = nudgesByID[id] else { return nil }
+            let sortedReqs = reqs.sorted { $0.identifier < $1.identifier }
+            let upcomingDates = sortedReqs
+                .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+                .sorted()
+            let todaysDates = upcomingDates.filter { Calendar.current.isDateInToday($0) }
+            return RandomNudgeGroup(
+                id: id,
+                nudge: nudge,
+                requests: sortedReqs,
+                nextTriggerDate: upcomingDates.first,
+                todaysTriggerDates: todaysDates
+            )
+        }
+    }
+
+    private func randomNudgeID(from identifier: String) -> UUID? {
+        let prefix = "randomNudge-"
+        guard identifier.hasPrefix(prefix) else { return nil }
+        let remainder = String(identifier.dropFirst(prefix.count))
+        guard remainder.count >= 36 else { return nil }
+        let uuidToken = String(remainder.prefix(36))
+        return UUID(uuidString: uuidToken)
+    }
+
+    private func hasPendingMismatch(
+        habit: Habit,
+        pendingCount: Int,
+        expectedPendingCount: Int,
+        expectedNextDate: Date?,
+        pendingNextDate: Date?
+    ) -> Bool {
+        if HabitIntervalScheduleStore.interval(for: habit)?.intervalDays ?? 1 > 1 {
+            switch (expectedNextDate, pendingNextDate) {
+            case (nil, nil):
+                return false
+            case let (expected?, pending?):
+                return minuteToken(for: expected) != minuteToken(for: pending)
+            default:
+                return true
+            }
+        }
+
+        if pendingCount != expectedPendingCount {
+            return true
+        }
+
+        return pendingCount == 0 && expectedNextDate != nil
+    }
+
+    private func minuteToken(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func expectedPendingRequestCount(for habit: Habit) -> Int {
+        if HabitIntervalScheduleStore.interval(for: habit)?.intervalDays ?? 1 > 1 {
+            return min(nextReminderDates(for: habit, limit: 45).count, 45)
+        }
+
+        let mask = habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask
+        if mask == HabitSchedule.allDaysMask {
+            return 1
+        }
+
+        return HabitWeekday.allCases.reduce(into: 0) { count, weekday in
+            if HabitSchedule.isSelected(weekday, mask: mask) {
+                count += 1
+            }
+        }
+    }
+
+}
+
+private struct RandomNudgeRow: View {
+    let group: RandomNudgeGroup
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 28, height: 28)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(group.nudge.title)
+                    .font(.headline)
+                Text("Random \(group.nudge.nudgesPerDay)x/day · \(wakeWindowLabel)")
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                Text(nextLabel(group.nextTriggerDate))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if !group.todaysTriggerDates.isEmpty {
+                    Text(todayTimesLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var wakeWindowLabel: String {
+        String(format: "%02d:%02d-%02d:%02d",
+               group.nudge.wakeStartHour,
+               group.nudge.wakeStartMinute,
+               group.nudge.wakeEndHour,
+               group.nudge.wakeEndMinute)
+    }
+
+    private func nextLabel(_ date: Date?) -> String {
+        guard let date else { return "No upcoming nudge" }
+        let relative = RelativeDateTimeFormatter()
+        relative.unitsStyle = .short
+        return "Next nudge \(relative.localizedString(for: date, relativeTo: Date()))"
+    }
+
+    private var todayTimesLabel: String {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeStyle = .short
+        let labels = group.todaysTriggerDates.map { formatter.string(from: $0) }
+        return "Today: \(labels.joined(separator: " · "))"
     }
 }
 
-private struct ReminderGroupCard: View {
+private struct ReminderRow: View {
     let group: ReminderGroup
-    let onDelete: () -> Void
-    @Environment(\.colorScheme) var colorScheme
-    @State private var showDeleteConfirm = false
-    
+
     var body: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(Color.accentColor.opacity(0.12))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: "bell.fill")
-                        .foregroundStyle(Color.accentColor)
-                        .font(.system(size: 20))
-                )
-            
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "bell.badge.fill")
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 28, height: 28)
+                .padding(.top, 2)
+
             VStack(alignment: .leading, spacing: 6) {
                 Text(group.title)
                     .font(.headline)
+
+                Text("\(timeLabel(group.displayTime)), \(group.scheduleText.lowercased())")
+                    .font(.subheadline)
                     .foregroundStyle(.primary)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "clock.fill")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 12))
-                        Text("\(daysLabel(group.weekdays)) at \(timeLabel(group.requests.first))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    HStack(spacing: 8) {
-                        Image(systemName: "calendar.badge.clock")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 12))
-                        Text("Next: \(nextLabel(group.nextTriggerDate))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                if !group.body.isEmpty {
-                    Text(group.body)
-                        .font(.caption)
+
+                Text(nextLabel(group.nextTriggerDate))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if !group.todaysRemainingTriggerDates.isEmpty {
+                    Text(expectedTodayLabel)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                }
+
+                Text(pendingLineLabel)
+                    .font(.footnote)
+                    .foregroundStyle(group.hasPendingMismatch ? .red : .secondary)
+
+                if group.hasPendingMismatch {
+                    Text("Pending in iOS does not match the expected schedule.")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
                 }
             }
-            
-            Spacer()
-            
-            Button(action: { showDeleteConfirm = true }) {
-                Image(systemName: "trash.fill")
-                    .foregroundStyle(.red)
-                    .font(.system(size: 16))
-                    .padding(8)
-                    .background(Color.red.opacity(0.1))
-                    .clipShape(Circle())
-            }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(colorScheme == .dark ? Color(uiColor: .systemGray6) : Color(uiColor: .systemBackground))
-                .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.1),
-                       radius: 8, x: 0, y: 2)
-        )
-        .alert("Remove reminder?", isPresented: $showDeleteConfirm) {
-            Button("Cancel", role: .cancel) {}
-            Button("Remove", role: .destructive) { onDelete() }
-        } message: {
-            Text("This will remove \(group.requests.count) scheduled reminder\(group.requests.count == 1 ? "" : "s") for this habit.")
-        }
+        .padding(.vertical, 4)
     }
 
     private func nextLabel(_ date: Date?) -> String {
@@ -228,44 +519,41 @@ private struct ReminderGroupCard: View {
         let relative = RelativeDateTimeFormatter()
         relative.unitsStyle = .short
         let rel = relative.localizedString(for: date, relativeTo: Date())
-
-        let time = DateFormatter()
-        time.locale = .autoupdatingCurrent
-        time.dateStyle = .none
-        time.timeStyle = .short
-        return "\(rel) (\(time.string(from: date)))"
+        return "Next alert \(rel)"
     }
-    
-    private func timeLabel(_ request: UNNotificationRequest?) -> String {
-        guard
-            let request,
-            let trigger = request.trigger as? UNCalendarNotificationTrigger,
-            let date = trigger.nextTriggerDate()
-        else { return "Unknown time" }
+
+    private func timeLabel(_ date: Date?) -> String {
+        guard let date else { return "Unknown time" }
         let formatter = DateFormatter()
         formatter.locale = .autoupdatingCurrent
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
+        formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
-    
-    private func daysLabel(_ weekdays: [Int]) -> String {
-        if weekdays.count == 7 { return "Every day" }
-        if weekdays == [2, 3, 4, 5, 6] { return "Weekdays" }
-        if weekdays == [1, 7] { return "Weekends" }
-        
-        func short(_ weekday: Int) -> String {
-            switch weekday {
-            case 1: return "Sun"
-            case 2: return "Mon"
-            case 3: return "Tue"
-            case 4: return "Wed"
-            case 5: return "Thu"
-            case 6: return "Fri"
-            case 7: return "Sat"
-            default: return "?"
-            }
+
+    private var expectedTodayLabel: String {
+        "Expected today: \(joinedTimes(group.todaysRemainingTriggerDates))"
+    }
+
+    private var pendingLineLabel: String {
+        if group.expectedPendingCount > 0 && !group.hasPendingMismatch {
+            return "Pending in iOS: \(group.pendingCount) scheduled"
         }
-        return weekdays.map(short).joined(separator: ", ")
+
+        if !group.pendingTodayTriggerDates.isEmpty {
+            return "Pending in iOS today: \(joinedTimes(group.pendingTodayTriggerDates))"
+        }
+
+        if let pendingNext = group.pendingNextTriggerDate {
+            return "Pending in iOS next: \(timeLabel(pendingNext))"
+        }
+
+        return "Pending in iOS: none (\(group.pendingCount)/\(group.expectedPendingCount) scheduled)"
+    }
+
+    private func joinedTimes(_ dates: [Date]) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeStyle = .short
+        return dates.map { formatter.string(from: $0) }.joined(separator: " · ")
     }
 }

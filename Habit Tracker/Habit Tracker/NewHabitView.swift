@@ -1,386 +1,174 @@
-import UserNotifications
 import SwiftUI
 import CoreData
 
 struct NewHabitView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject private var categoryStore = CategoryStore.shared
     @State private var habitName: String = ""
-    @State private var reminderTime: Date? = nil
     @State private var showingToast = false
-    @State private var isTimePickerVisible = false
     @State private var isReminderSet = true
     @State private var selectedDate = Date()
-    @State private var isKeyboardHidden = true
     @State private var category: String = ""
     @State private var priority: Int16 = 0
     @State private var showCategoryPicker = false
     @State private var activeDaysMask: Int16 = HabitSchedule.allDaysMask
     @State private var iconName: String = HabitIcons.defaultIcon
     @State private var showIconPicker = false
+    @State private var showValidationAlert = false
+    @State private var validationMessage = ""
     
     private var existingCategories: [String] { categoryStore.categories }
     
     var body: some View {
-        ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.accentColor.opacity(0.2),
-                    Color.accentColor.opacity(0.1),
-                    Color(.systemBackground)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 28) {
-                    VStack(spacing: 12) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 52, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        
-                        Text("Create New Habit")
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("Build a habit that sticks")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top, 24)
-                    
-                    // Habit Name Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Habit Name", systemImage: "pencil")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(.secondary)
-                        
-                        TextField("What habit would you like to build?", text: $habitName)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 16))
-                            .padding(16)
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Icon Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Icon", systemImage: "square.grid.2x2")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        Button(action: { showIconPicker = true }) {
-                            HStack(spacing: 16) {
-                                Image(systemName: iconName)
-                                    .font(.system(size: 28))
-                                    .foregroundColor(.blue)
-                                    .frame(width: 52, height: 52)
-                                    .background(Color.blue.opacity(0.1))
-                                    .clipShape(Circle())
-                                Text("Choose Icon")
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                Spacer(minLength: 12)
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 14, weight: .semibold))
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 16)
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .sheet(isPresented: $showIconPicker) {
-                        IconPickerView(selectedIcon: $iconName)
-                    }
-                    
-                    // Category Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Category", systemImage: "tag")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        Menu {
-                            Button(action: { category = "" }) {
-                                HStack {
-                                    Text("None")
-                                    if category.isEmpty {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            
-                            ForEach(existingCategories, id: \.self) { cat in
-                                Button(action: { category = cat }) {
-                                    HStack {
-                                        Text(cat)
-                                        if category == cat {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            Divider()
-                            
-                            Button(action: { showCategoryPicker = true }) {
-                                HStack {
-                                    Image(systemName: "plus.circle")
-                                    Text("New Category")
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "tag.fill")
-                                    .foregroundColor(.blue)
-                                Text(category.isEmpty ? "Select Category" : category)
-                                    .foregroundColor(.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 14))
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .alert("New Category", isPresented: $showCategoryPicker) {
-                        TextField("Category name", text: $category)
-                        Button("Cancel", role: .cancel) {
-                            category = ""
-                        }
-                        Button("Add") {
-                            categoryStore.add(category)
-                        }
-                    } message: {
-                        Text("Enter a name for the new category")
-                    }
-                    
-                    // Priority Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Priority", systemImage: "star")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 12) {
-                            HStack {
-                                Text("Priority Level")
-                                    .font(.system(size: 16))
-                                Spacer()
-                                Text("\(priority)")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.orange)
-                            }
-                            
-                            HStack(spacing: 12) {
-                                ForEach(1...5, id: \.self) { index in
-                                    Button(action: { priority = Int16(index) }) {
-                                        Image(systemName: index <= priority ? "star.fill" : "star")
-                                            .foregroundColor(index <= priority ? .orange : .gray)
-                                            .font(.system(size: 24))
-                                    }
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
-                    }
-                    .padding(.horizontal, 20)
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Habit Name", text: $habitName)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .padding(.horizontal, 12)
+                        .frame(height: 44)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } header: {
+                    Label("Details", systemImage: "square.and.pencil")
+                } footer: {
+                    Text("Choose a short, specific habit name.")
+                }
 
-                    // Schedule Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Label("Schedule", systemImage: "calendar")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-
-                        VStack(spacing: 12) {
-                            HStack {
-                                Text("Active on")
-                                    .font(.system(size: 16))
-                                Spacer()
-                                Text(HabitSchedule.label(for: activeDaysMask))
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.trailing)
-                            }
-
-                            HStack(spacing: 10) {
-                                SchedulePresetButton(title: "Every day", isSelected: activeDaysMask == HabitSchedule.allDaysMask) {
-                                    activeDaysMask = HabitSchedule.allDaysMask
-                                }
-                                SchedulePresetButton(title: "Weekdays", isSelected: activeDaysMask == HabitSchedule.weekdaysMask) {
-                                    activeDaysMask = HabitSchedule.weekdaysMask
-                                }
-                                SchedulePresetButton(title: "Weekends", isSelected: activeDaysMask == HabitSchedule.weekendsMask) {
-                                    activeDaysMask = HabitSchedule.weekendsMask
-                                }
-                            }
-
-                            HStack(spacing: 8) {
-                                ForEach(HabitWeekday.allCases) { day in
-                                    let isOn = HabitSchedule.isSelected(day, mask: activeDaysMask)
-                                    Button {
-                                        var mask = activeDaysMask
-                                        HabitSchedule.setSelected(day, selected: !isOn, mask: &mask)
-                                        activeDaysMask = mask
-                                    } label: {
-                                        Text(day.veryShortLabel)
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .frame(width: 34, height: 34)
-                                            .background(
-                                                Circle()
-                                                    .fill(isOn ? Color.blue : Color(.systemGray5))
-                                            )
-                                            .foregroundColor(isOn ? .white : .primary)
-                                    }
-                                }
-                            }
+                Section {
+                    Button {
+                        showIconPicker = true
+                    } label: {
+                        HStack {
+                            Label("Icon", systemImage: iconName)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(readableIconName)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
-                    .padding(.horizontal, 20)
-                    
-                    // Reminder Card
-                    VStack(alignment: .leading, spacing: 15) {
-                        Label("Reminder", systemImage: "bell.fill")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 15) {
-                            Toggle(isOn: $isReminderSet) {
-                                Text("Daily Reminder")
-                                    .font(.system(size: 16))
-                            }
-                            .tint(.blue)
-                            
-                            if isReminderSet {
-                                Divider()
-                                
-                                Button(action: { isTimePickerVisible.toggle() }) {
-                                    HStack {
-                                        Image(systemName: "clock.fill")
-                                            .foregroundColor(.blue)
-                                        Text(reminderTime != nil ? selectedTimeString : "Choose time")
-                                            .foregroundColor(.primary)
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .foregroundColor(.gray)
-                                            .font(.system(size: 14))
-                                    }
-                                }
-                                
-                                if isTimePickerVisible {
-                                    DatePicker("", selection: $selectedDate, displayedComponents: .hourAndMinute)
-                                        .datePickerStyle(GraphicalDatePickerStyle())
-                                        .labelsHidden()
-                                        .onChange(of: selectedDate) { newValue in
-                                            reminderTime = newValue
-                                        }
-                                }
-                            }
+                    .buttonStyle(.plain)
+
+                    Picker("Category", selection: $category) {
+                        Text("None").tag("")
+                        ForEach(existingCategories, id: \.self) { cat in
+                            Text(cat).tag(cat)
                         }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
-                    
-                    // Modern floating action button
-                    Button(action: addHabit) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 20))
-                            Text("Create Habit")
-                                .fontWeight(.semibold)
+
+                    Button("Add New Category") {
+                        showCategoryPicker = true
+                    }
+                } header: {
+                    Label("Organization", systemImage: "tray.full")
+                }
+
+                Section {
+                    Picker("Priority", selection: $priority) {
+                        ForEach(0...5, id: \.self) { value in
+                            Text(value == 0 ? "None" : "\(value)").tag(Int16(value))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
-                                         startPoint: .leading,
-                                         endPoint: .trailing)
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Label("Priority", systemImage: "star")
+                }
+
+                Section {
+                    Picker("Preset", selection: schedulePresetBinding) {
+                        Text("Custom").tag("custom")
+                        Text("Every day").tag("everyday")
+                        Text("Weekdays").tag("weekdays")
+                        Text("Weekends").tag("weekends")
+                    }
+                    .pickerStyle(.segmented)
+
+                    ForEach(HabitWeekday.allCases) { day in
+                        Toggle(day.shortLabel, isOn: binding(for: day))
+                    }
+
+                    LabeledContent("Summary", value: HabitSchedule.label(for: activeDaysMask))
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Label("Schedule", systemImage: "calendar")
+                }
+
+                Section {
+                    Toggle("Enable Reminder", isOn: $isReminderSet.animation())
+
+                    if isReminderSet {
+                        DatePicker(
+                            "Time",
+                            selection: $selectedDate,
+                            displayedComponents: .hourAndMinute
                         )
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .datePickerStyle(.compact)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
+                } header: {
+                    Label("Reminder", systemImage: "bell")
+                } footer: {
+                    Text("Optional. If enabled, notifications are scheduled on selected days.")
                 }
             }
-            
-            // Modern toast notification
-            if showingToast {
-                VStack {
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.green)
-                        Text("Habit Created Successfully")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(Color.black.opacity(0.8))
-                    .cornerRadius(30)
-                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .sheet(isPresented: $showIconPicker) {
+                IconPickerView(selectedIcon: $iconName)
+            }
+            .alert("New Category", isPresented: $showCategoryPicker) {
+                TextField("Category name", text: $category)
+                Button("Cancel", role: .cancel) {}
+                Button("Add") {
+                    categoryStore.add(category)
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .animation(.spring())
-                .zIndex(1)
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        withAnimation {
-                            showingToast = false
-                        }
+            } message: {
+                Text("Enter a name for the new category")
+            }
+            .navigationTitle("New Habit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Create") {
+                        addHabit()
                     }
+                    .fontWeight(.semibold)
+                    .disabled(HabitFormValidation.normalizedName(habitName).isEmpty)
                 }
             }
+        }
+        .alert("Cannot Create Habit", isPresented: $showValidationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(validationMessage)
         }
     }
 
     private func addHabit() {
+        let normalizedName = HabitFormValidation.normalizedName(habitName)
+        guard !normalizedName.isEmpty else {
+            validationMessage = "Habit name can't be empty."
+            showValidationAlert = true
+            return
+        }
+        guard !HabitFormValidation.duplicateNameExists(normalizedName, in: viewContext) else {
+            validationMessage = "A habit with this name already exists."
+            showValidationAlert = true
+            return
+        }
+
         let newHabit = Habit(context: viewContext)
-        newHabit.name = habitName
+        newHabit.name = normalizedName
         newHabit.isCompleted = false
-        newHabit.reminderTime = reminderTime
+        newHabit.timestamp = Date()
+        newHabit.reminderTime = isReminderSet ? selectedDate : nil
         newHabit.category = category.isEmpty ? nil : category
         newHabit.priority = priority
         newHabit.activeDaysMask = activeDaysMask
         newHabit.iconName = iconName
+        newHabit.notificationIdentifier = isReminderSet ? "\(HabitReminderScheduler.baseIdentifier(for: newHabit))-multi" : nil
 
         do {
             if !category.isEmpty {
@@ -390,87 +178,76 @@ struct NewHabitView: View {
             withAnimation {
                 showingToast = true
             }
-            scheduleNotifications(for: newHabit)
-            // Reset form
+            HabitReminderScheduler.scheduleReminders(for: newHabit)
             habitName = ""
-            reminderTime = nil
+            selectedDate = Date()
             category = ""
             priority = 0
             activeDaysMask = HabitSchedule.allDaysMask
             iconName = HabitIcons.defaultIcon
-            isTimePickerVisible = false
+            dismiss()
         } catch {
             let nsError = error as NSError
             print("Error saving habit: \(nsError), \(nsError.userInfo)")
         }
     }
-    
-    private var selectedTimeString: String {
-        guard let reminderTime = reminderTime else { return "Now" }
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: reminderTime)
+
+    private var readableIconName: String {
+        iconName
+            .split(separator: ".")
+            .map { $0.capitalized }
+            .joined(separator: " ")
     }
-    
-    private func scheduleNotifications(for habit: Habit) {
-        guard isReminderSet, let reminderTime else { return }
 
-        let base = "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
-        removeNotifications(forBaseIdentifier: base)
-
-        let habitURI = habit.objectID.uriRepresentation().absoluteString
-        let content = UNMutableNotificationContent()
-        content.title = "Reminder - \(habit.name ?? "")"
-        content.body = "Don't forget to complete your habit: \(habit.name ?? "")"
-        content.sound = UNNotificationSound.default
-        content.categoryIdentifier = "HABIT_REMINDER"
-        content.userInfo = ["habitObjectIDURI": habitURI]
-
-        let hour = Calendar.current.component(.hour, from: reminderTime)
-        let minute = Calendar.current.component(.minute, from: reminderTime)
-
-        let selectedDays = HabitWeekday.allCases.filter { HabitSchedule.isSelected($0, mask: activeDaysMask) }
-        for day in selectedDays {
-            var comps = DateComponents()
-            comps.weekday = day.calendarWeekday
-            comps.hour = hour
-            comps.minute = minute
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-            let identifier = "\(base)-\(day.calendarWeekday)"
-            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-            UNUserNotificationCenter.current().add(request) { error in
-                if let error { print("Error scheduling notification: \(error.localizedDescription)") }
+    private var schedulePresetSelection: String {
+        get {
+            switch activeDaysMask {
+            case HabitSchedule.allDaysMask:
+                return "everyday"
+            case HabitSchedule.weekdaysMask:
+                return "weekdays"
+            case HabitSchedule.weekendsMask:
+                return "weekends"
+            default:
+                return "custom"
             }
         }
-
-        // Keep legacy field non-empty so existing UI logic treats reminders as enabled.
-        habit.notificationIdentifier = "\(base)-multi"
-    }
-
-    private func removeNotifications(forBaseIdentifier base: String) {
-        // Remove deterministically to avoid races with async fetch/remove.
-        let identifiers = [base, "\(base)-multi"] + (1...7).map { "\(base)-\($0)" }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
-    }
-}
-
-private struct SchedulePresetButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isSelected ? Color.blue.opacity(0.15) : Color(.systemGray6))
-                )
-                .foregroundColor(isSelected ? .blue : .primary)
+        set {
+            applySchedulePreset(newValue)
         }
+    }
+
+    private var schedulePresetBinding: Binding<String> {
+        Binding(
+            get: { schedulePresetSelection },
+            set: { newValue in
+                applySchedulePreset(newValue)
+            }
+        )
+    }
+
+    private func applySchedulePreset(_ preset: String) {
+        switch preset {
+        case "everyday":
+            activeDaysMask = HabitSchedule.allDaysMask
+        case "weekdays":
+            activeDaysMask = HabitSchedule.weekdaysMask
+        case "weekends":
+            activeDaysMask = HabitSchedule.weekendsMask
+        default:
+            break
+        }
+    }
+
+    private func binding(for day: HabitWeekday) -> Binding<Bool> {
+        Binding(
+            get: { HabitSchedule.isSelected(day, mask: activeDaysMask) },
+            set: { isSelected in
+                var mask = activeDaysMask
+                HabitSchedule.setSelected(day, selected: isSelected, mask: &mask)
+                activeDaysMask = mask
+            }
+        )
     }
 }
 

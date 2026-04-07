@@ -13,7 +13,7 @@ struct IconPickerView: View {
     ]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 24) {
                     ForEach(HabitIcons.all, id: \.self) { icon in
@@ -27,7 +27,7 @@ struct IconPickerView: View {
                                 .frame(width: 72, height: 72)
                                 .background(
                                     Circle()
-                                        .fill(selectedIcon == icon ? Color.blue : (colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6)))
+                                        .fill(selectedIcon == icon ? Color.accentColor : (colorScheme == .dark ? Color(.systemGray5) : Color(.systemGray6)))
                                 )
                         }
                         .buttonStyle(.plain)

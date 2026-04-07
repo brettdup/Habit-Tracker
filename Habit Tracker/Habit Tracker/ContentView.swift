@@ -8,16 +8,16 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            NavigationView {
+            NavigationStack {
                 HabitListView()
                     .navigationTitle("Habits")
-                    .navigationBarTitleDisplayMode(.large)
+                    .navigationBarTitleDisplayMode(.inline)
             }
             .tabItem {
                 Label("Habits", systemImage: "list.bullet")
             }
             
-            NavigationView {
+            NavigationStack {
                 HistoryView()
                     .navigationTitle("History")
                     .navigationBarTitleDisplayMode(.large)
@@ -26,7 +26,7 @@ struct ContentView: View {
                 Label("History", systemImage: "chart.line.uptrend.xyaxis")
             }
             
-            NavigationView {
+            NavigationStack {
                 NewHabitView()
                     .navigationTitle("New Habit")
                     .navigationBarTitleDisplayMode(.large)
@@ -35,15 +35,8 @@ struct ContentView: View {
                 Label("New Habit", systemImage: "plus.circle.fill")
             }
             
-            NavigationView {
-                Group {
-                    if #available(iOS 18.0, *) {
-                        SettingsView()
-                    } else {
-                        Text("Settings")
-                            .foregroundColor(.secondary)
-                    }
-                }
+            NavigationStack {
+                SettingsView()
                 .navigationTitle("Settings")
                 .navigationBarTitleDisplayMode(.large)
             }
@@ -51,7 +44,7 @@ struct ContentView: View {
                 Label("Settings", systemImage: "gearshape.fill")
             }
             
-            NavigationView {
+            NavigationStack {
                 ScheduledNotificationsView()
                     .navigationTitle("Reminders")
                     .navigationBarTitleDisplayMode(.large)
@@ -63,8 +56,6 @@ struct ContentView: View {
         }
     }
 }
-
-
 
 
 

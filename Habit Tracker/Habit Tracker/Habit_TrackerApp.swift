@@ -9,11 +9,15 @@ import SwiftUI
 import UserNotifications
 import CoreData
 
+private enum PreviewRuntime {
+    static var isRunning: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    }
+}
+
 // MARK: - Notification Category & Actions
 
 private enum HabitNotificationCategory {
-    static let identifier = "HABIT_REMINDER"
-
     static func register() {
         let completeAction = UNNotificationAction(
             identifier: "COMPLETE",
@@ -26,7 +30,7 @@ private enum HabitNotificationCategory {
             options: []
         )
         let category = UNNotificationCategory(
-            identifier: identifier,
+            identifier: HabitReminderScheduler.notificationCategoryIdentifier,
             actions: [completeAction, snoozeAction],
             intentIdentifiers: [],
             options: []
@@ -60,39 +64,47 @@ struct Habit_TrackerApp: App {
     }
 }
 
-private let lastLaunchDateKey = "LastLaunchDate"
-
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        guard !PreviewRuntime.isRunning else {
+            return true
+        }
+
         HabitNotificationCategory.register()
-
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if granted {
-                print("Notification authorization granted")
-            } else {
-                print("Notification authorization denied")
-            }
-        }
-        if isNextDay() {
-            // Perform actions for the next day
-        }
-
         UNUserNotificationCenter.current().delegate = self
-        UserDefaults.standard.set(Date(), forKey: lastLaunchDateKey)
+        let context = PersistenceController.shared.container.viewContext
+        context.performAndWait {
+            HabitDailySyncService.migrateLegacyCompletionRelationships(in: context)
+            HabitDailySyncService.syncHabitStates(in: context)
+            HabitReminderScheduler.refreshAllReminders(in: context)
+        }
 
         return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        guard !PreviewRuntime.isRunning else { return }
+        clearDeliveredRandomNudges()
+        RandomNudgeScheduler.refreshAllNudges()
     }
     
     // Handle notification when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Handle how to present the notification
-        completionHandler([.alert, .sound])
+        refreshNudgesIfNeeded(for: notification.request)
+        completionHandler([.banner, .sound])
     }
 
     // Handle user interactions with notifications
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
+        if userInfo["randomNudge"] as? Bool == true {
+            clearDeliveredRandomNudges()
+            RandomNudgeScheduler.refreshAllNudges()
+            completionHandler()
+            return
+        }
+
         guard let habitURIString = userInfo["habitObjectIDURI"] as? String,
               let habitURI = URL(string: habitURIString) else {
             completionHandler()
@@ -123,17 +135,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         let fetchRequest: NSFetchRequest<Habit> = Habit.fetchRequest()
         guard let allHabits = try? context.fetch(fetchRequest) else { return }
         let activeToday = allHabits.filter { h in
-            HabitSchedule.isActive(on: Date(), mask: h.activeDaysMask == 0 ? HabitSchedule.allDaysMask : h.activeDaysMask)
+            HabitScheduleResolver.isActive(habit: h, on: Date())
         }
         let totalCount = Int16(activeToday.count)
 
-        let record = HabitCompletionRecord(context: context)
-        record.date = today
-        record.habitName = habit.name
-        record.isCompleted = true
-        record.totalHabits = totalCount
-
-        try? context.save()
+        try? HabitCompletionStore.setCompleted(true, for: habit, totalHabits: totalCount, on: today, in: context)
     }
 
     private func handleSnoozeAction(habitURI: URL) {
@@ -149,31 +155,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         content.title = "Reminder - \(habitName)"
         content.body = "Don't forget to complete your habit: \(habitName)"
         content.sound = .default
-        content.categoryIdentifier = HabitNotificationCategory.identifier
+        content.interruptionLevel = .timeSensitive
+        content.categoryIdentifier = HabitReminderScheduler.notificationCategoryIdentifier
         content.userInfo = ["habitObjectIDURI": habitURI.absoluteString]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false)
         let request = UNNotificationRequest(identifier: snoozeID, content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { _ in }
     }
-    
-    func isNextDay() -> Bool {
-            // Get the last launch date from UserDefaults
-            if let lastLaunchDate = UserDefaults.standard.object(forKey: lastLaunchDateKey) as? Date {
-                // Get the current date
-                let currentDate = Date()
-                
-                // Compare the day components of the last launch date and the current date
-                let calendar = Calendar.current
-                let lastLaunchDay = calendar.component(.day, from: lastLaunchDate)
-                let currentDay = calendar.component(.day, from: currentDate)
-                
-                // If the current day is greater than the last launch day, it's the next day
-                return currentDay > lastLaunchDay
-            }
-            
-            // If the last launch date is nil, it's the next day
-            return true
-        }
 
+    private func refreshNudgesIfNeeded(for request: UNNotificationRequest) {
+        if request.content.userInfo["randomNudge"] as? Bool == true {
+            RandomNudgeScheduler.refreshAllNudges()
+        }
+    }
+
+    private func clearDeliveredRandomNudges() {
+        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+            let ids = notifications
+                .map(\.request)
+                .filter { $0.identifier.hasPrefix("randomNudge-") || (($0.content.userInfo["randomNudge"] as? Bool) == true) }
+                .map(\.identifier)
+            guard !ids.isEmpty else { return }
+            UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
+        }
+    }
 }

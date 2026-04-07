@@ -11,13 +11,17 @@
 		9E42A9D32BE5401900CDF3A7 /* NewHabitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E42A9D22BE5401900CDF3A7 /* NewHabitView.swift */; };
 		9E42A9D52BE5406600CDF3A7 /* HabitListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E42A9D42BE5406600CDF3A7 /* HabitListView.swift */; };
 		9E42A9D72BE540B900CDF3A7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */; };
+		9E43AA532BED028B00B03A44 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */; };
+		9E4B7001314A900100B1C2D3 /* AppChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4B7000314A900100B1C2D3 /* AppChrome.swift */; };
+		9E5446852BE958E9002F7D21 /* HabitDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5446842BE958E9002F7D21 /* HabitDetailView.swift */; };
+		9E5A1001314A400100A1B2C3 /* HabitDataServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5A1000314A400100A1B2C3 /* HabitDataServices.swift */; };
 		9E7C6C012D1A9A1C00B7F2D1 /* CategoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */; };
 		9E7C6C032D1A9A4000B7F2D1 /* HabitSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */; };
 		9E7C6C052D1B2A1000B7F2D1 /* HabitIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */; };
 		9E7C6C072D1B2A2000B7F2D1 /* IconPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */; };
 		9E7C6C092D1B2B0000B7F2D1 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */; };
-		9E43AA532BED028B00B03A44 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */; };
-		9E5446852BE958E9002F7D21 /* HabitDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E5446842BE958E9002F7D21 /* HabitDetailView.swift */; };
+		9E8D7A01324F10010011AA22 /* RandomNudgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8D7A00324F10010011AA22 /* RandomNudgesView.swift */; };
+		9E8D7A03324F14010011AA22 /* RemindersImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E8D7A02324F14010011AA22 /* RemindersImportView.swift */; };
 		9EA78C582BE64CC4003E272C /* ScheduledNotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA78C572BE64CC4003E272C /* ScheduledNotificationsView.swift */; };
 		9EE30AD42BE50FC4004991EB /* Habit_TrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE30AD32BE50FC4004991EB /* Habit_TrackerApp.swift */; };
 		9EE30AD62BE50FC4004991EB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE30AD52BE50FC4004991EB /* ContentView.swift */; };
@@ -65,15 +69,21 @@
 		9E42A9D22BE5401900CDF3A7 /* NewHabitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewHabitView.swift; sourceTree = "<group>"; };
 		9E42A9D42BE5406600CDF3A7 /* HabitListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitListView.swift; sourceTree = "<group>"; };
 		9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
+		9E4B7000314A900100B1C2D3 /* AppChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppChrome.swift; sourceTree = "<group>"; };
+		9E54466F2BE94CAD002F7D21 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		9E5446712BE94CAD002F7D21 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		9E5446842BE958E9002F7D21 /* HabitDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitDetailView.swift; sourceTree = "<group>"; };
+		9E5A1000314A400100A1B2C3 /* HabitDataServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitDataServices.swift; sourceTree = "<group>"; };
+		9E6FAE622F84D86A008617EF /* Habit-Tracker-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Habit-Tracker-Info.plist"; sourceTree = SOURCE_ROOT; };
+		9E6FAE632F84D87B008617EF /* Habit Tracker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Habit Tracker.entitlements"; sourceTree = "<group>"; };
 		9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryStore.swift; sourceTree = "<group>"; };
 		9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitSchedule.swift; sourceTree = "<group>"; };
 		9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitIcons.swift; sourceTree = "<group>"; };
 		9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconPickerView.swift; sourceTree = "<group>"; };
 		9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
-		9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
-		9E54466F2BE94CAD002F7D21 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
-		9E5446712BE94CAD002F7D21 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		9E5446842BE958E9002F7D21 /* HabitDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitDetailView.swift; sourceTree = "<group>"; };
+		9E8D7A00324F10010011AA22 /* RandomNudgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomNudgesView.swift; sourceTree = "<group>"; };
+		9E8D7A02324F14010011AA22 /* RemindersImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemindersImportView.swift; sourceTree = "<group>"; };
 		9EA78C572BE64CC4003E272C /* ScheduledNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledNotificationsView.swift; sourceTree = "<group>"; };
 		9EE30AD02BE50FC4004991EB /* Habit Tracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Habit Tracker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9EE30AD32BE50FC4004991EB /* Habit_TrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Habit_TrackerApp.swift; sourceTree = "<group>"; };
@@ -147,14 +157,20 @@
 		9EE30AD22BE50FC4004991EB /* Habit Tracker */ = {
 			isa = PBXGroup;
 			children = (
+				9E6FAE632F84D87B008617EF /* Habit Tracker.entitlements */,
+				9E6FAE622F84D86A008617EF /* Habit-Tracker-Info.plist */,
 				9E43AA522BED028B00B03A44 /* Launch Screen.storyboard */,
 				9EE30AD32BE50FC4004991EB /* Habit_TrackerApp.swift */,
 				9EE30AD52BE50FC4004991EB /* ContentView.swift */,
+				9E4B7000314A900100B1C2D3 /* AppChrome.swift */,
+				9E5A1000314A400100A1B2C3 /* HabitDataServices.swift */,
 				9E7C6C002D1A9A1C00B7F2D1 /* CategoryStore.swift */,
 				9E7C6C022D1A9A4000B7F2D1 /* HabitSchedule.swift */,
 				9E7C6C042D1B2A1000B7F2D1 /* HabitIcons.swift */,
 				9E7C6C062D1B2A2000B7F2D1 /* IconPickerView.swift */,
 				9E7C6C082D1B2B0000B7F2D1 /* ThemeStore.swift */,
+				9E8D7A00324F10010011AA22 /* RandomNudgesView.swift */,
+				9E8D7A02324F14010011AA22 /* RemindersImportView.swift */,
 				9E42A9D62BE540B900CDF3A7 /* SettingsView.swift */,
 				9E42A9D42BE5406600CDF3A7 /* HabitListView.swift */,
 				9E42A9D22BE5401900CDF3A7 /* NewHabitView.swift */,
@@ -330,9 +346,11 @@
 				9E42A9D72BE540B900CDF3A7 /* SettingsView.swift in Sources */,
 				9EE30ADD2BE50FC6004991EB /* Persistence.swift in Sources */,
 				9EE30AE02BE50FC6004991EB /* Habit_Tracker.xcdatamodeld in Sources */,
+				9E4B7001314A900100B1C2D3 /* AppChrome.swift in Sources */,
 				9E42A9D12BE53FBB00CDF3A7 /* HistoryView.swift in Sources */,
 				9EA78C582BE64CC4003E272C /* ScheduledNotificationsView.swift in Sources */,
 				9E5446852BE958E9002F7D21 /* HabitDetailView.swift in Sources */,
+				9E5A1001314A400100A1B2C3 /* HabitDataServices.swift in Sources */,
 				9EE30AD62BE50FC4004991EB /* ContentView.swift in Sources */,
 				9EE30AD42BE50FC4004991EB /* Habit_TrackerApp.swift in Sources */,
 				9E42A9D52BE5406600CDF3A7 /* HabitListView.swift in Sources */,
@@ -341,6 +359,8 @@
 				9E7C6C052D1B2A1000B7F2D1 /* HabitIcons.swift in Sources */,
 				9E7C6C072D1B2A2000B7F2D1 /* IconPickerView.swift in Sources */,
 				9E7C6C092D1B2B0000B7F2D1 /* ThemeStore.swift in Sources */,
+				9E8D7A01324F10010011AA22 /* RandomNudgesView.swift in Sources */,
+				9E8D7A03324F14010011AA22 /* RemindersImportView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -501,12 +521,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Habit Tracker/Habit Tracker.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Habit Tracker/Preview Content\"";
 				DEVELOPMENT_TEAM = C6GR6GJPAA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Habit-Tracker-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -532,12 +554,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Habit Tracker/Habit Tracker.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Habit Tracker/Preview Content\"";
 				DEVELOPMENT_TEAM = C6GR6GJPAA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Habit-Tracker-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
