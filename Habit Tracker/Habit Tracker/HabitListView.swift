@@ -38,13 +38,15 @@ enum DisplayOption: String, CaseIterable {
 }
 
 struct HabitListView: View {
+    private static let delayedRemovalInterval: TimeInterval = 3
+
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(entity: Habit.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Habit.name, ascending: true)]) var habits: FetchedResults<Habit>
+    @AppStorage("habitListSortOption") private var selectedSortOptionRaw = SortOption.name.rawValue
+    @AppStorage("habitListDisplayOption") private var selectedDisplayOptionRaw = DisplayOption.all.rawValue
     @State private var showAddHabit = false
     @State private var searchText = ""
-    @State private var selectedSortOption: SortOption = .name
     @State private var selectedGroupOption: GroupOption = .none
-    @State private var selectedDisplayOption: DisplayOption = .all
     @State private var showCategoryManagement = false
     @State private var showRandomNudges = false
     @State private var showRemindersImport = false
@@ -52,6 +54,17 @@ struct HabitListView: View {
     @State private var habitPendingDeletion: Habit?
     @State private var selectedDate = Date()
     @State private var showDatePicker = false
+    @State private var delayedVisibleCompletedHabitIDs: [NSManagedObjectID: Date] = [:]
+
+    private var selectedDisplayOption: DisplayOption {
+        get { DisplayOption(rawValue: selectedDisplayOptionRaw) ?? .all }
+        nonmutating set { selectedDisplayOptionRaw = newValue.rawValue }
+    }
+
+    private var selectedSortOption: SortOption {
+        get { SortOption(rawValue: selectedSortOptionRaw) ?? .name }
+        nonmutating set { selectedSortOptionRaw = newValue.rawValue }
+    }
     
     var filteredHabits: [Habit] {
         let habitsArray = Array(habits)
@@ -63,7 +76,10 @@ struct HabitListView: View {
             displayFiltered = activeOnSelectedDate
         case .notDone:
             let completedHabitIDs = completedHabitObjectIDs(on: selectedDate)
-            displayFiltered = activeOnSelectedDate.filter { !completedHabitIDs.contains($0.objectID) }
+            let delayedVisibleHabitIDs = currentDelayedVisibleCompletedHabitIDs
+            displayFiltered = activeOnSelectedDate.filter {
+                !completedHabitIDs.contains($0.objectID) || delayedVisibleHabitIDs.contains($0.objectID)
+            }
         }
         let filteredBase = searchText.isEmpty ? displayFiltered : displayFiltered.filter { ($0.name ?? "").localizedCaseInsensitiveContains(searchText) }
         let filtered = filteredBase
@@ -143,6 +159,33 @@ struct HabitListView: View {
 
         return Set(records.compactMap { $0.habit?.objectID })
     }
+
+    private var currentDelayedVisibleCompletedHabitIDs: Set<NSManagedObjectID> {
+        let now = Date()
+        return Set(
+            delayedVisibleCompletedHabitIDs.compactMap { objectID, expiry in
+                expiry > now ? objectID : nil
+            }
+        )
+    }
+
+    private func handleCompletionChange(for habit: Habit, isCompleted: Bool) {
+        let objectID = habit.objectID
+
+        if selectedDisplayOption == .notDone && isCompleted {
+            let expiry = Date().addingTimeInterval(Self.delayedRemovalInterval)
+            delayedVisibleCompletedHabitIDs[objectID] = expiry
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.delayedRemovalInterval) {
+                if let currentExpiry = delayedVisibleCompletedHabitIDs[objectID], currentExpiry <= Date() {
+                    delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+                }
+            }
+            return
+        }
+
+        delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+    }
     
     var body: some View {
         AppScreenBackground {
@@ -166,6 +209,9 @@ struct HabitListView: View {
                                             habit: habit,
                                             totalHabits: filteredHabits.count,
                                             selectedDate: selectedDate,
+                                            onCompletionChange: { isCompleted in
+                                                handleCompletionChange(for: habit, isCompleted: isCompleted)
+                                            },
                                             onEdit: { selectedHabitForEditing = habit },
                                             onDeleteRequest: { habitPendingDeletion = habit },
                                             onDeleteConfirmRequest: { habitPendingDeletion = habit }
@@ -181,6 +227,9 @@ struct HabitListView: View {
                                         habit: habit,
                                         totalHabits: filteredHabits.count,
                                         selectedDate: selectedDate,
+                                        onCompletionChange: { isCompleted in
+                                            handleCompletionChange(for: habit, isCompleted: isCompleted)
+                                        },
                                         onEdit: { selectedHabitForEditing = habit },
                                         onDeleteRequest: { habitPendingDeletion = habit },
                                         onDeleteConfirmRequest: { habitPendingDeletion = habit }
@@ -223,6 +272,15 @@ struct HabitListView: View {
             placement: .toolbar,
             prompt: "Search habits"
         )
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !habits.isEmpty {
+                displayToggle
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                    .background(Color(uiColor: .systemGroupedBackground).opacity(0.96))
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 if !Calendar.current.isDateInToday(selectedDate) {
@@ -250,22 +308,6 @@ struct HabitListView: View {
                 }
 
                 Menu {
-                    Menu {
-                        ForEach(DisplayOption.allCases, id: \.self) { option in
-                            Button {
-                                selectedDisplayOption = option
-                            } label: {
-                                if selectedDisplayOption == option {
-                                    Label(option.rawValue, systemImage: "checkmark")
-                                } else {
-                                    Text(option.rawValue)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label("Show", systemImage: "line.3.horizontal.decrease")
-                    }
-
                     Menu {
                         ForEach(SortOption.allCases, id: \.self) { option in
                             Button {
@@ -309,7 +351,7 @@ struct HabitListView: View {
             }
         }
         .sheet(isPresented: $showAddHabit) {
-            NewHabitView()
+            NewHabitView(showsCancelButton: true)
         }
         .sheet(isPresented: $showCategoryManagement) {
             CategoryManagementView()
@@ -372,6 +414,20 @@ struct HabitListView: View {
             guard !HabitPreviewRuntime.isRunning else { return }
             HabitDailySyncService.syncHabitStates(in: viewContext)
         }
+    }
+
+    @ViewBuilder
+    private var displayToggle: some View {
+        Picker("Show", selection: Binding(
+            get: { selectedDisplayOption },
+            set: { selectedDisplayOption = $0 }
+        )) {
+            ForEach(DisplayOption.allCases, id: \.self) { option in
+                Text(option.rawValue).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Show")
     }
 
     @ViewBuilder
@@ -570,6 +626,7 @@ struct HabitRow: View {
     @FetchRequest private var completionRecords: FetchedResults<HabitCompletionRecord>
     var totalHabits: Int
     let selectedDate: Date
+    let onCompletionChange: (Bool) -> Void
     let onEdit: () -> Void
     let onDeleteRequest: () -> Void
     let onDeleteConfirmRequest: () -> Void
@@ -578,6 +635,7 @@ struct HabitRow: View {
         habit: Habit,
         totalHabits: Int,
         selectedDate: Date,
+        onCompletionChange: @escaping (Bool) -> Void = { _ in },
         onEdit: @escaping () -> Void,
         onDeleteRequest: @escaping () -> Void,
         onDeleteConfirmRequest: @escaping () -> Void
@@ -585,6 +643,7 @@ struct HabitRow: View {
         self.habit = habit
         self.totalHabits = totalHabits
         self.selectedDate = selectedDate
+        self.onCompletionChange = onCompletionChange
         self.onEdit = onEdit
         self.onDeleteRequest = onDeleteRequest
         self.onDeleteConfirmRequest = onDeleteConfirmRequest
@@ -647,7 +706,7 @@ struct HabitRow: View {
         HStack(spacing: 16) {
             CheckBox(isChecked: isCompletedOnSelectedDate, toggleCompletion: toggleCompletion)
                 .foregroundColor(isCompletedOnSelectedDate ? Color.accentColor : .secondary)
-                .frame(width: 24)
+                .frame(width: 36, height: 36)
             
             VStack(alignment: .leading, spacing: 6) {
                 Text(habit.name ?? "")
@@ -752,12 +811,14 @@ struct HabitRow: View {
         if isCompletedOnSelectedDate {
             do {
                 try HabitCompletionStore.setCompleted(false, for: habit, totalHabits: Int16(totalHabits), on: selectedDate, in: viewContext)
+                onCompletionChange(false)
             } catch {
                 print("Error removing completion record: \(error.localizedDescription)")
             }
         } else {
             do {
                 try HabitCompletionStore.setCompleted(true, for: habit, totalHabits: Int16(totalHabits), on: selectedDate, in: viewContext)
+                onCompletionChange(true)
             } catch {
                 print("Error saving habit completion: \(error.localizedDescription)")
             }
@@ -777,6 +838,7 @@ struct CheckBox: View {
         } label: {
             Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 22, weight: .medium))
+                .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

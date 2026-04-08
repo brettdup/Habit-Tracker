@@ -54,6 +54,9 @@ struct HabitDetailView: View {
             Form {
                 Section("Details") {
                     TextField("Habit Name", text: $habitName)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .appTextInputStyle()
 
                     Button {
                         showIconPicker = true

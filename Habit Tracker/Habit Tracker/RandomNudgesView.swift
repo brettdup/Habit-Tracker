@@ -264,7 +264,12 @@ struct AddRandomNudgeView: View {
             Form {
                 Section("What To Nudge") {
                     TextField("Title (e.g. Drink Water)", text: $title)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.next)
+                        .appTextInputStyle()
                     TextField("Notification message", text: $message)
+                        .submitLabel(.done)
+                        .appTextInputStyle()
                 }
 
                 Section("Random Timing") {

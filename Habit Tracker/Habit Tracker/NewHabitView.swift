@@ -2,6 +2,8 @@ import SwiftUI
 import CoreData
 
 struct NewHabitView: View {
+    let showsCancelButton: Bool
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject private var categoryStore = CategoryStore.shared
@@ -17,6 +19,10 @@ struct NewHabitView: View {
     @State private var showIconPicker = false
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
+
+    init(showsCancelButton: Bool = false) {
+        self.showsCancelButton = showsCancelButton
+    }
     
     private var existingCategories: [String] { categoryStore.categories }
     
@@ -27,10 +33,7 @@ struct NewHabitView: View {
                     TextField("Habit Name", text: $habitName)
                         .textInputAutocapitalization(.words)
                         .submitLabel(.done)
-                        .padding(.horizontal, 12)
-                        .frame(height: 44)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .appTextInputStyle()
                 } header: {
                     Label("Details", systemImage: "square.and.pencil")
                 } footer: {
@@ -128,7 +131,9 @@ struct NewHabitView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    if showsCancelButton {
+                        Button("Cancel") { dismiss() }
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Create") {

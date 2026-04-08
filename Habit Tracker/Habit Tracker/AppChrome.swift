@@ -39,3 +39,12 @@ struct AppListContainer<Content: View>: View {
     }
 }
 
+extension View {
+    func appTextInputStyle() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
