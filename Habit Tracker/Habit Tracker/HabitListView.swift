@@ -38,7 +38,7 @@ enum DisplayOption: String, CaseIterable {
 }
 
 struct HabitListView: View {
-    private static let delayedRemovalInterval: TimeInterval = 3
+    private static let delayedRemovalInterval: TimeInterval = 0.9
 
     @Environment(\.managedObjectContext) private var viewContext
     @FetchRequest(entity: Habit.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Habit.name, ascending: true)]) var habits: FetchedResults<Habit>
@@ -160,6 +160,16 @@ struct HabitListView: View {
         return Set(records.compactMap { $0.habit?.objectID })
     }
 
+    private var shouldShowAllDoneState: Bool {
+        selectedDisplayOption == .notDone &&
+        !activeHabitsForSelectedDate.isEmpty &&
+        filteredHabits.isEmpty
+    }
+
+    private var completedHabitsCountForSelectedDate: Int {
+        activeHabitsForSelectedDate.filter { completedHabitObjectIDs(on: selectedDate).contains($0.objectID) }.count
+    }
+
     private var currentDelayedVisibleCompletedHabitIDs: Set<NSManagedObjectID> {
         let now = Date()
         return Set(
@@ -178,13 +188,17 @@ struct HabitListView: View {
 
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.delayedRemovalInterval) {
                 if let currentExpiry = delayedVisibleCompletedHabitIDs[objectID], currentExpiry <= Date() {
-                    delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+                    withAnimation(.easeOut(duration: 0.35)) {
+                        delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+                    }
                 }
             }
             return
         }
 
-        delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+        withAnimation(.easeOut(duration: 0.3)) {
+            delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+        }
     }
     
     var body: some View {
@@ -198,10 +212,19 @@ struct HabitListView: View {
                 } else {
                     List {
                         dateNavigator
-                            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 6, trailing: 16))
                             .listRowSeparator(.hidden)
 
-                        if groupedHabits.count > 1 || (groupedHabits.count == 1 && groupedHabits.keys.first != "All") {
+                        if shouldShowAllDoneState {
+                            AllDoneStateView(
+                                selectedDate: selectedDate,
+                                completedCount: completedHabitsCountForSelectedDate,
+                                totalCount: activeHabitsForSelectedDate.count
+                            )
+                            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        } else if groupedHabits.count > 1 || (groupedHabits.count == 1 && groupedHabits.keys.first != "All") {
                             ForEach(sortedGroupKeys, id: \.self) { groupKey in
                                 Section(groupKey) {
                                     ForEach(groupedHabits[groupKey] ?? [], id: \.objectID) { habit in
@@ -276,9 +299,8 @@ struct HabitListView: View {
             if !habits.isEmpty {
                 displayToggle
                     .padding(.horizontal, 16)
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
-                    .background(Color(uiColor: .systemGroupedBackground).opacity(0.96))
+                    .padding(.vertical, 8)
+                .background(Color(uiColor: .systemGroupedBackground).opacity(0.96))
             }
         }
         .toolbar {
@@ -428,17 +450,18 @@ struct HabitListView: View {
         }
         .pickerStyle(.segmented)
         .accessibilityLabel("Show")
+        .scaleEffect(x: 1, y: 0.92, anchor: .center)
     }
 
     @ViewBuilder
     private var dateNavigator: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Button {
                 shiftSelectedDate(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 30, height: 30)
                     .background(Circle().fill(Color(uiColor: .secondarySystemGroupedBackground)))
             }
             .buttonStyle(.plain)
@@ -446,17 +469,17 @@ struct HabitListView: View {
             Button {
                 showDatePicker = true
             } label: {
-                VStack(spacing: 2) {
+                VStack(spacing: 1) {
                     Text(selectedDateTitle)
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                     Text(selectedDateSubtitle)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, minHeight: 38)
+                .padding(.horizontal, 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(Color(uiColor: .secondarySystemGroupedBackground))
                 )
                 .contentShape(Rectangle())
@@ -468,13 +491,13 @@ struct HabitListView: View {
                 shiftSelectedDate(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 30, height: 30)
                     .background(Circle().fill(Color(uiColor: .secondarySystemGroupedBackground)))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 2)
     }
 
     private func shiftSelectedDate(by days: Int) {
@@ -504,7 +527,7 @@ struct HabitListView: View {
         formatter.timeStyle = .none
         let dateLabel = formatter.string(from: selectedDate)
         let totalCount = activeHabitsForSelectedDate.count
-        let completedCount = activeHabitsForSelectedDate.filter { completedHabitObjectIDs(on: selectedDate).contains($0.objectID) }.count
+        let completedCount = completedHabitsCountForSelectedDate
 
         let summary: String
         switch selectedDisplayOption {
@@ -592,6 +615,49 @@ struct EmptyStateView: View {
             .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct AllDoneStateView: View {
+    let selectedDate: Date
+    let completedCount: Int
+    let totalCount: Int
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.14))
+                    .frame(width: 84, height: 84)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 38, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            VStack(spacing: 6) {
+                Text("All Done for Today")
+                    .font(.title3.weight(.semibold))
+
+                Text("\(completedCount) out of \(totalCount) completed")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 28)
+    }
+
+    private var message: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return "You’ve completed every habit scheduled for \(formatter.string(from: selectedDate))."
     }
 }
 

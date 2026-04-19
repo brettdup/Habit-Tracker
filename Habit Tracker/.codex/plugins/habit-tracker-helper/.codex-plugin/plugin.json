@@ -1,0 +1,29 @@
+{
+  "name": "habit-tracker-helper",
+  "version": "0.1.0",
+  "description": "Project-specific Codex guidance for the Habit Tracker app",
+  "author": {
+    "name": "Brett Duplessis"
+  },
+  "license": "Proprietary",
+  "keywords": [
+    "habit-tracker",
+    "swiftui",
+    "ios",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Habit Tracker Helper",
+    "shortDescription": "Codex help tuned for this Habit Tracker codebase",
+    "longDescription": "A local project plugin that packages app-specific skills and conventions for working on Habit Tracker without repeating the same instructions in every session.",
+    "developerName": "Brett Duplessis",
+    "category": "Coding",
+    "capabilities": ["Write"],
+    "defaultPrompt": [
+      "Review a Habit Tracker SwiftUI change for regressions",
+      "Add a new Habit Tracker feature and update the changelog",
+      "Refactor Habit Tracker UI code to match project conventions"
+    ]
+  }
+}
