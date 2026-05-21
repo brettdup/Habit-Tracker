@@ -1,12 +1,16 @@
 import SwiftUI
 import CoreData
+import UIKit
 
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @AppStorage("themeMode") private var themeModeRaw = AppThemeMode.system.rawValue
     @AppStorage("accentColor") private var accentColorRaw = AppAccentColor.blue.rawValue
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showNotificationAlert = false
+    @State private var selectedAppIcon = AppIconOption.current
+    @State private var iconErrorMessage: String?
     
     private var themeMode: AppThemeMode {
         get { AppThemeMode(rawValue: themeModeRaw) ?? .system }
@@ -37,6 +41,10 @@ struct SettingsView: View {
                         }
                         .tag(color.rawValue)
                     }
+                }
+
+                AppIconPicker(selection: selectedAppIcon) { option in
+                    updateAppIcon(to: option)
                 }
             }
 
@@ -78,6 +86,142 @@ struct SettingsView: View {
         } message: {
             Text("Enable notifications in iOS Settings before turning reminders back on.")
         }
+        .alert("Icon Unavailable", isPresented: Binding(
+            get: { iconErrorMessage != nil },
+            set: { if !$0 { iconErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(iconErrorMessage ?? "The app icon could not be changed.")
+        }
+        .onAppear(perform: syncSelectedAppIcon)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                syncSelectedAppIcon()
+            }
+        }
+    }
+
+    private func syncSelectedAppIcon() {
+        selectedAppIcon = AppIconOption(iconName: UIApplication.shared.alternateIconName)
+    }
+
+    private func updateAppIcon(to option: AppIconOption) {
+        guard UIApplication.shared.supportsAlternateIcons else {
+            iconErrorMessage = "This device does not support alternate app icons."
+            return
+        }
+
+        UIApplication.shared.setAlternateIconName(option.iconName) { error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    iconErrorMessage = error.localizedDescription
+                    syncSelectedAppIcon()
+                    return
+                }
+
+                selectedAppIcon = option
+            }
+        }
+    }
+}
+
+private enum AppIconOption: String, CaseIterable, Identifiable {
+    case current
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .current:
+            return "Classic"
+        case .light:
+            return "Light"
+        case .dark:
+            return "Dark"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .current:
+            return "Original app icon"
+        case .light:
+            return "Bright planner style"
+        case .dark:
+            return "High contrast planner style"
+        }
+    }
+
+    var iconName: String? {
+        switch self {
+        case .current:
+            return nil
+        case .light:
+            return "AppIconLight"
+        case .dark:
+            return "AppIconDark"
+        }
+    }
+
+    var previewAssetName: String {
+        switch self {
+        case .current:
+            return "AppIconOriginalPreview"
+        case .light:
+            return "AppIconLightPreview"
+        case .dark:
+            return "AppIconDarkPreview"
+        }
+    }
+
+    init(iconName: String?) {
+        self = Self.allCases.first { $0.iconName == iconName } ?? .current
+    }
+}
+
+private struct AppIconPicker: View {
+    let selection: AppIconOption
+    let onSelect: (AppIconOption) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("App Icon", systemImage: "app.badge")
+
+            HStack(spacing: 12) {
+                ForEach(AppIconOption.allCases) { option in
+                    Button {
+                        onSelect(option)
+                    } label: {
+                        VStack(spacing: 8) {
+                            Image(option.previewAssetName)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 56, height: 56)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(option == selection ? Color.accentColor : Color(.separator), lineWidth: option == selection ? 3 : 1)
+                                }
+
+                            Text(option.title)
+                                .font(.caption)
+                                .fontWeight(option == selection ? .semibold : .regular)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.subtitle)
+                    .accessibilityValue(option == selection ? "Selected" : "")
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
