@@ -249,6 +249,8 @@ enum HabitDailySyncService {
 enum HabitReminderScheduler {
     static let notificationsEnabledKey = "notificationsEnabled"
     static let notificationCategoryIdentifier = "HABIT_REMINDER"
+    private static let defaultNotificationTitleKey = "defaultNotificationTitle"
+    private static let defaultNotificationBodyKey = "defaultNotificationBody"
 
     static var notificationsEnabled: Bool {
         if UserDefaults.standard.object(forKey: notificationsEnabledKey) == nil {
@@ -344,8 +346,8 @@ enum HabitReminderScheduler {
 
             let habitURI = habit.objectID.uriRepresentation().absoluteString
             let content = UNMutableNotificationContent()
-            content.title = "Reminder - \(habit.name ?? "")"
-            content.body = "Don't forget to complete your habit: \(habit.name ?? "")"
+            content.title = notificationTitle(for: habit)
+            content.body = notificationBody(for: habit)
             content.sound = .default
             content.interruptionLevel = .timeSensitive
             content.categoryIdentifier = notificationCategoryIdentifier
@@ -410,6 +412,64 @@ enum HabitReminderScheduler {
 
     static func baseIdentifier(for habit: Habit) -> String {
         "habitReminder-\(habit.objectID.uriRepresentation().absoluteString)"
+    }
+
+    static func defaultNotificationTitle(for habitName: String?) -> String {
+        "Reminder - \(habitName ?? "")"
+    }
+
+    static func defaultNotificationBody(for habitName: String?) -> String {
+        "Don't forget to complete your habit: \(habitName ?? "")"
+    }
+
+    static var savedDefaultNotificationTitle: String {
+        sanitizedNotificationText(UserDefaults.standard.string(forKey: defaultNotificationTitleKey)) ?? ""
+    }
+
+    static var savedDefaultNotificationBody: String {
+        sanitizedNotificationText(UserDefaults.standard.string(forKey: defaultNotificationBodyKey)) ?? ""
+    }
+
+    static func saveDefaultNotificationText(title: String, body: String) {
+        setSavedDefaultNotificationText(title, forKey: defaultNotificationTitleKey)
+        setSavedDefaultNotificationText(body, forKey: defaultNotificationBodyKey)
+    }
+
+    static func notificationTitle(for habit: Habit) -> String {
+        if let title = sanitizedNotificationText(habit.notificationTitle) {
+            return notificationText(title, habitName: habit.name)
+        }
+        if let title = sanitizedNotificationText(savedDefaultNotificationTitle) {
+            return notificationText(title, habitName: habit.name)
+        }
+        return defaultNotificationTitle(for: habit.name)
+    }
+
+    static func notificationBody(for habit: Habit) -> String {
+        if let body = sanitizedNotificationText(habit.notificationBody) {
+            return notificationText(body, habitName: habit.name)
+        }
+        if let body = sanitizedNotificationText(savedDefaultNotificationBody) {
+            return notificationText(body, habitName: habit.name)
+        }
+        return defaultNotificationBody(for: habit.name)
+    }
+
+    private static func sanitizedNotificationText(_ text: String?) -> String? {
+        let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func notificationText(_ text: String, habitName: String?) -> String {
+        text.replacingOccurrences(of: "{habit}", with: habitName ?? "")
+    }
+
+    private static func setSavedDefaultNotificationText(_ text: String, forKey key: String) {
+        if let sanitized = sanitizedNotificationText(text) {
+            UserDefaults.standard.set(sanitized, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
     }
 
     static func removeNotifications(forBaseIdentifier base: String) {

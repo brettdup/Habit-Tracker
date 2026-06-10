@@ -189,7 +189,7 @@ struct HabitListView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.delayedRemovalInterval) {
                 if let currentExpiry = delayedVisibleCompletedHabitIDs[objectID], currentExpiry <= Date() {
                     withAnimation(.easeOut(duration: 0.35)) {
-                        delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+                        _ = delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
                     }
                 }
             }
@@ -197,7 +197,7 @@ struct HabitListView: View {
         }
 
         withAnimation(.easeOut(duration: 0.3)) {
-            delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
+            _ = delayedVisibleCompletedHabitIDs.removeValue(forKey: objectID)
         }
     }
     

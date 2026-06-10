@@ -11,6 +11,9 @@ struct SettingsView: View {
     @State private var showNotificationAlert = false
     @State private var selectedAppIcon = AppIconOption.current
     @State private var iconErrorMessage: String?
+    @State private var defaultNotificationTitle = ""
+    @State private var defaultNotificationBody = ""
+    @FocusState private var focusedNotificationField: NotificationTextField?
     
     private var themeMode: AppThemeMode {
         get { AppThemeMode(rawValue: themeModeRaw) ?? .system }
@@ -53,6 +56,22 @@ struct SettingsView: View {
                     Label("Enable Notifications", systemImage: "bell.fill")
                 }
             }
+
+            Section {
+                TextField("Reminder - {habit}", text: $defaultNotificationTitle)
+                    .textInputAutocapitalization(.sentences)
+                    .submitLabel(.next)
+                    .focused($focusedNotificationField, equals: .title)
+
+                TextField("Don't forget to complete your habit: {habit}", text: $defaultNotificationBody, axis: .vertical)
+                    .textInputAutocapitalization(.sentences)
+                    .lineLimit(2...4)
+                    .focused($focusedNotificationField, equals: .body)
+            } header: {
+                Text("Default Notification Text")
+            } footer: {
+                Text("Use {habit} where the habit name should appear. Leave either field blank to use the built-in default for that field.")
+            }
             
             Section(header: Text("About")) {
                 HStack {
@@ -94,10 +113,27 @@ struct SettingsView: View {
         } message: {
             Text(iconErrorMessage ?? "The app icon could not be changed.")
         }
-        .onAppear(perform: syncSelectedAppIcon)
+        .onAppear {
+            syncSelectedAppIcon()
+            loadDefaultNotificationText()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 syncSelectedAppIcon()
+            }
+        }
+        .onChange(of: defaultNotificationTitle) { _, _ in
+            saveDefaultNotificationText()
+        }
+        .onChange(of: defaultNotificationBody) { _, _ in
+            saveDefaultNotificationText()
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedNotificationField = nil
+                }
             }
         }
     }
@@ -123,6 +159,24 @@ struct SettingsView: View {
                 selectedAppIcon = option
             }
         }
+    }
+
+    private func loadDefaultNotificationText() {
+        defaultNotificationTitle = HabitReminderScheduler.savedDefaultNotificationTitle
+        defaultNotificationBody = HabitReminderScheduler.savedDefaultNotificationBody
+    }
+
+    private func saveDefaultNotificationText() {
+        HabitReminderScheduler.saveDefaultNotificationText(
+            title: defaultNotificationTitle,
+            body: defaultNotificationBody
+        )
+        HabitReminderScheduler.refreshAllReminders(in: viewContext)
+    }
+
+    private enum NotificationTextField {
+        case title
+        case body
     }
 }
 

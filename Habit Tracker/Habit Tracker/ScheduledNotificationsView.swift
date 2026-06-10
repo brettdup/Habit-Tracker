@@ -292,8 +292,8 @@ struct ScheduledNotificationsView: View {
 
             return ReminderGroup(
                 id: base,
-                title: "Reminder - \(habit.name ?? "")",
-                body: "Don't forget to complete your habit: \(habit.name ?? "")",
+                title: HabitReminderScheduler.notificationTitle(for: habit),
+                body: HabitReminderScheduler.notificationBody(for: habit),
                 scheduleText: HabitScheduleResolver.label(for: habit),
                 nextTriggerDate: nextDate,
                 todaysRemainingTriggerDates: todaysRemainingDates,
@@ -485,6 +485,10 @@ private struct ReminderRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(group.title)
                     .font(.headline)
+
+                Text(group.body)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 Text("\(timeLabel(group.displayTime)), \(group.scheduleText.lowercased())")
                     .font(.subheadline)

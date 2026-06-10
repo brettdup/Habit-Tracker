@@ -11,6 +11,8 @@ struct HabitDetailView: View {
     @State private var showAlert = false
     @State private var isReminderSet = false
     @State private var selectedDate = Date()
+    @State private var notificationTitle: String = ""
+    @State private var notificationBody: String = ""
     @State private var category: String = ""
     @State private var priority: Int16 = 0
     @State private var showCategoryPicker = false
@@ -19,10 +21,12 @@ struct HabitDetailView: View {
     @State private var showIconPicker = false
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
+    @FocusState private var focusedNotificationField: NotificationTextField?
     
     var viewContext: NSManagedObjectContext
     
     private var existingCategories: [String] { categoryStore.categories }
+    private let priorityValues: [Int16] = [0, 1, 2, 3, 4, 5]
 
     init(habit: Habit, viewContext: NSManagedObjectContext) {
         self.habit = habit
@@ -31,6 +35,8 @@ struct HabitDetailView: View {
         _priority = State(initialValue: habit.priority)
         _activeDaysMask = State(initialValue: habit.activeDaysMask == 0 ? HabitSchedule.allDaysMask : habit.activeDaysMask)
         _iconName = State(initialValue: habit.iconName ?? HabitIcons.defaultIcon)
+        _notificationTitle = State(initialValue: habit.notificationTitle ?? "")
+        _notificationBody = State(initialValue: habit.notificationBody ?? "")
         self.viewContext = viewContext
         if let notificationIdentifier = habit.notificationIdentifier, !notificationIdentifier.isEmpty {
             _isReminderSet = State(initialValue: true)
@@ -52,72 +58,10 @@ struct HabitDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Details") {
-                    TextField("Habit Name", text: $habitName)
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.done)
-                        .appTextInputStyle()
-
-                    Button {
-                        showIconPicker = true
-                    } label: {
-                        HStack {
-                            Label("Icon", systemImage: iconName)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text(readableIconName)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Picker("Category", selection: $category) {
-                        Text("None").tag("")
-                        ForEach(existingCategories, id: \.self) { cat in
-                            Text(cat).tag(cat)
-                        }
-                    }
-
-                    Button("Add New Category") {
-                        showCategoryPicker = true
-                    }
-                }
-                Section("Priority") {
-                    Picker("Priority", selection: $priority) {
-                        ForEach(0...5, id: \.self) { value in
-                            Text(value == 0 ? "None" : "\(value)").tag(Int16(value))
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                Section("Schedule") {
-                    Picker("Preset", selection: schedulePresetBinding) {
-                        Text("Custom").tag("custom")
-                        Text("Every day").tag("everyday")
-                        Text("Weekdays").tag("weekdays")
-                        Text("Weekends").tag("weekends")
-                    }
-                    .pickerStyle(.menu)
-
-                    ForEach(HabitWeekday.allCases) { day in
-                        Toggle(day.shortLabel, isOn: binding(for: day))
-                    }
-
-                    LabeledContent("Summary", value: HabitSchedule.label(for: activeDaysMask))
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("Reminder") {
-                    Toggle("Enable Reminder", isOn: $isReminderSet.animation())
-
-                    if isReminderSet {
-                        DatePicker(
-                            "Time",
-                            selection: $selectedDate,
-                            displayedComponents: .hourAndMinute
-                        )
-                    }
-                }
+                detailsSection
+                prioritySection
+                scheduleSection
+                reminderSection
 
                 Section("Insights") {
                     NavigationLink("View Habit History") {
@@ -158,6 +102,12 @@ struct HabitDetailView: View {
                     .fontWeight(.semibold)
                     .disabled(HabitFormValidation.normalizedName(habitName).isEmpty)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedNotificationField = nil
+                    }
+                }
             }
             .alert("Delete Habit", isPresented: $showAlert) {
                 Button("Delete", role: .destructive) {
@@ -180,6 +130,118 @@ struct HabitDetailView: View {
             .split(separator: ".")
             .map { $0.capitalized }
             .joined(separator: " ")
+    }
+
+    private var detailsSection: some View {
+        Section("Details") {
+            TextField("Habit Name", text: $habitName)
+                .textInputAutocapitalization(.words)
+                .submitLabel(.done)
+                .appTextInputStyle()
+
+            Button {
+                showIconPicker = true
+            } label: {
+                HStack {
+                    Label("Icon", systemImage: iconName)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text(readableIconName)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Picker("Category", selection: $category) {
+                Text("None").tag("")
+                ForEach(existingCategories, id: \.self) { cat in
+                    Text(cat).tag(cat)
+                }
+            }
+
+            Button("Add New Category") {
+                showCategoryPicker = true
+            }
+        }
+    }
+
+    private var prioritySection: some View {
+        Section("Priority") {
+            Picker("Priority", selection: $priority) {
+                ForEach(priorityValues, id: \.self) { value in
+                    Text(priorityLabel(for: value)).tag(value)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var scheduleSection: some View {
+        Section("Schedule") {
+            Picker("Preset", selection: schedulePresetBinding) {
+                Text("Custom").tag("custom")
+                Text("Every day").tag("everyday")
+                Text("Weekdays").tag("weekdays")
+                Text("Weekends").tag("weekends")
+            }
+            .pickerStyle(.menu)
+
+            ForEach(HabitWeekday.allCases) { day in
+                Toggle(day.shortLabel, isOn: binding(for: day))
+            }
+
+            LabeledContent("Summary", value: HabitSchedule.label(for: activeDaysMask))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var reminderSection: some View {
+        Section {
+            Toggle("Enable Notifications", isOn: $isReminderSet.animation())
+
+            if isReminderSet {
+                DatePicker(
+                    "Time",
+                    selection: $selectedDate,
+                    displayedComponents: .hourAndMinute
+                )
+
+                TextField(defaultNotificationTitle, text: $notificationTitle)
+                    .textInputAutocapitalization(.sentences)
+                    .submitLabel(.next)
+                    .focused($focusedNotificationField, equals: .title)
+
+                TextField(defaultNotificationBody, text: $notificationBody, axis: .vertical)
+                    .textInputAutocapitalization(.sentences)
+                    .lineLimit(2...4)
+                    .focused($focusedNotificationField, equals: .body)
+            }
+        } header: {
+            Text("Reminder")
+        } footer: {
+            Text("Use {habit} where the habit name should appear. Leave text fields blank to use the built-in message.")
+        }
+    }
+
+    private func priorityLabel(for value: Int16) -> String {
+        value == 0 ? "None" : "\(value)"
+    }
+
+    private enum NotificationTextField {
+        case title
+        case body
+    }
+
+    private var defaultNotificationTitle: String {
+        HabitReminderScheduler.defaultNotificationTitle(for: HabitFormValidation.normalizedName(habitName))
+    }
+
+    private var defaultNotificationBody: String {
+        HabitReminderScheduler.defaultNotificationBody(for: HabitFormValidation.normalizedName(habitName))
+    }
+
+    private func normalizedOptionalText(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private var schedulePresetSelection: String {
@@ -269,6 +331,8 @@ struct HabitDetailView: View {
         habit.priority = priority
         habit.activeDaysMask = activeDaysMask
         habit.iconName = iconName
+        habit.notificationTitle = normalizedOptionalText(notificationTitle)
+        habit.notificationBody = normalizedOptionalText(notificationBody)
         
         // Update reminder time based on toggle state
         if !isReminderSet {

@@ -11,6 +11,8 @@ struct NewHabitView: View {
     @State private var showingToast = false
     @State private var isReminderSet = true
     @State private var selectedDate = Date()
+    @State private var notificationTitle: String = ""
+    @State private var notificationBody: String = ""
     @State private var category: String = ""
     @State private var priority: Int16 = 0
     @State private var showCategoryPicker = false
@@ -19,12 +21,16 @@ struct NewHabitView: View {
     @State private var showIconPicker = false
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
+    @FocusState private var focusedNotificationField: NotificationTextField?
 
     init(showsCancelButton: Bool = false) {
         self.showsCancelButton = showsCancelButton
+        _notificationTitle = State(initialValue: HabitReminderScheduler.savedDefaultNotificationTitle)
+        _notificationBody = State(initialValue: HabitReminderScheduler.savedDefaultNotificationBody)
     }
     
     private var existingCategories: [String] { categoryStore.categories }
+    private let priorityValues: [Int16] = [0, 1, 2, 3, 4, 5]
     
     var body: some View {
         NavigationStack {
@@ -70,8 +76,8 @@ struct NewHabitView: View {
 
                 Section {
                     Picker("Priority", selection: $priority) {
-                        ForEach(0...5, id: \.self) { value in
-                            Text(value == 0 ? "None" : "\(value)").tag(Int16(value))
+                        ForEach(priorityValues, id: \.self) { value in
+                            Text(priorityLabel(for: value)).tag(value)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -99,7 +105,7 @@ struct NewHabitView: View {
                 }
 
                 Section {
-                    Toggle("Enable Reminder", isOn: $isReminderSet.animation())
+                    Toggle("Enable Notifications", isOn: $isReminderSet.animation())
 
                     if isReminderSet {
                         DatePicker(
@@ -108,11 +114,21 @@ struct NewHabitView: View {
                             displayedComponents: .hourAndMinute
                         )
                         .datePickerStyle(.compact)
+
+                        TextField(defaultNotificationTitle, text: $notificationTitle)
+                            .textInputAutocapitalization(.sentences)
+                            .submitLabel(.next)
+                            .focused($focusedNotificationField, equals: .title)
+
+                        TextField(defaultNotificationBody, text: $notificationBody, axis: .vertical)
+                            .textInputAutocapitalization(.sentences)
+                            .lineLimit(2...4)
+                            .focused($focusedNotificationField, equals: .body)
                     }
                 } header: {
                     Label("Reminder", systemImage: "bell")
                 } footer: {
-                    Text("Optional. If enabled, notifications are scheduled on selected days.")
+                    Text("Optional. Use {habit} where the habit name should appear.")
                 }
             }
             .sheet(isPresented: $showIconPicker) {
@@ -141,6 +157,12 @@ struct NewHabitView: View {
                     }
                     .fontWeight(.semibold)
                     .disabled(HabitFormValidation.normalizedName(habitName).isEmpty)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedNotificationField = nil
+                    }
                 }
             }
         }
@@ -173,6 +195,8 @@ struct NewHabitView: View {
         newHabit.priority = priority
         newHabit.activeDaysMask = activeDaysMask
         newHabit.iconName = iconName
+        newHabit.notificationTitle = normalizedOptionalText(notificationTitle)
+        newHabit.notificationBody = normalizedOptionalText(notificationBody)
         newHabit.notificationIdentifier = isReminderSet ? "\(HabitReminderScheduler.baseIdentifier(for: newHabit))-multi" : nil
 
         do {
@@ -186,6 +210,8 @@ struct NewHabitView: View {
             HabitReminderScheduler.scheduleReminders(for: newHabit)
             habitName = ""
             selectedDate = Date()
+            notificationTitle = HabitReminderScheduler.savedDefaultNotificationTitle
+            notificationBody = HabitReminderScheduler.savedDefaultNotificationBody
             category = ""
             priority = 0
             activeDaysMask = HabitSchedule.allDaysMask
@@ -202,6 +228,28 @@ struct NewHabitView: View {
             .split(separator: ".")
             .map { $0.capitalized }
             .joined(separator: " ")
+    }
+
+    private var defaultNotificationTitle: String {
+        HabitReminderScheduler.defaultNotificationTitle(for: HabitFormValidation.normalizedName(habitName))
+    }
+
+    private var defaultNotificationBody: String {
+        HabitReminderScheduler.defaultNotificationBody(for: HabitFormValidation.normalizedName(habitName))
+    }
+
+    private func normalizedOptionalText(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func priorityLabel(for value: Int16) -> String {
+        value == 0 ? "None" : "\(value)"
+    }
+
+    private enum NotificationTextField {
+        case title
+        case body
     }
 
     private var schedulePresetSelection: String {
