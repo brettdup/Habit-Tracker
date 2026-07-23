@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var iconErrorMessage: String?
     @State private var defaultNotificationTitle = ""
     @State private var defaultNotificationBody = ""
+    @ObservedObject private var cloudSyncMonitor = CloudSyncMonitor.shared
     @FocusState private var focusedNotificationField: NotificationTextField?
     
     private var themeMode: AppThemeMode {
@@ -55,6 +56,16 @@ struct SettingsView: View {
                 Toggle(isOn: $notificationsEnabled) {
                     Label("Enable Notifications", systemImage: "bell.fill")
                 }
+            }
+
+            Section {
+                HStack {
+                    Label("iCloud Backup", systemImage: "icloud.fill")
+                    Spacer()
+                    cloudSyncStatusView
+                }
+            } footer: {
+                Text(cloudSyncFooterText)
             }
 
             Section {
@@ -116,6 +127,7 @@ struct SettingsView: View {
         .onAppear {
             syncSelectedAppIcon()
             loadDefaultNotificationText()
+            cloudSyncMonitor.refreshAccountStatus()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -172,6 +184,82 @@ struct SettingsView: View {
             body: defaultNotificationBody
         )
         HabitReminderScheduler.refreshAllReminders(in: viewContext)
+    }
+
+    @ViewBuilder
+    private var cloudSyncStatusView: some View {
+        if cloudSyncMonitor.state == .checking || cloudSyncMonitor.state == .syncing {
+            ProgressView()
+                .controlSize(.small)
+        } else {
+            Label(cloudSyncStatusTitle, systemImage: cloudSyncStatusSystemImage)
+                .font(.subheadline)
+                .foregroundStyle(cloudSyncStatusColor)
+        }
+    }
+
+    private var cloudSyncStatusTitle: String {
+        switch cloudSyncMonitor.state {
+        case .checking:
+            return "Checking"
+        case .ready:
+            return "Waiting"
+        case .syncing:
+            return "Syncing"
+        case .backedUp:
+            return "Backed Up"
+        case .restored:
+            return "Restore Checked"
+        case .noAccount:
+            return "Sign In"
+        case .restricted:
+            return "Restricted"
+        case .temporarilyUnavailable, .failed:
+            return "Error"
+        }
+    }
+
+    private var cloudSyncStatusSystemImage: String {
+        switch cloudSyncMonitor.state {
+        case .backedUp, .restored:
+            return "checkmark.circle.fill"
+        case .ready:
+            return "clock.fill"
+        default:
+            return "exclamationmark.circle.fill"
+        }
+    }
+
+    private var cloudSyncStatusColor: Color {
+        switch cloudSyncMonitor.state {
+        case .backedUp, .restored:
+            return .green
+        default:
+            return .secondary
+        }
+    }
+
+    private var cloudSyncFooterText: String {
+        switch cloudSyncMonitor.state {
+        case .checking:
+            return "Checking iCloud and CloudKit."
+        case .ready:
+            return "iCloud is available, but this installation has not completed a backup yet."
+        case .syncing:
+            return "Uploading or restoring habits and completion history."
+        case .backedUp(let date):
+            return "CloudKit confirmed a successful backup \(date.formatted(date: .abbreviated, time: .shortened))."
+        case .restored(let date):
+            return "CloudKit completed its restore check \(date.formatted(date: .abbreviated, time: .shortened))."
+        case .noAccount:
+            return "Sign in to iCloud in the Settings app to enable backup."
+        case .restricted:
+            return "iCloud access is restricted on this device."
+        case .temporarilyUnavailable:
+            return "iCloud is temporarily unavailable. Sync will retry automatically."
+        case .failed(let message):
+            return "CloudKit error: \(message)"
+        }
     }
 
     private enum NotificationTextField {

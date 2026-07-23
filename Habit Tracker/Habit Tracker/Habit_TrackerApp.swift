@@ -56,7 +56,9 @@ struct Habit_TrackerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(
+                shouldCheckForRestoreOnLaunch: !persistenceController.wasLocalStorePresent
+            )
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .preferredColorScheme(themeMode.colorScheme)
                 .tint(accentColor.color)

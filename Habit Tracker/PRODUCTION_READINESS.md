@@ -98,8 +98,11 @@ A comprehensive checklist of what’s needed to make this app a fully fledged, A
 
 ## Optional / Nice to Have
 
-### 20. **iCloud Sync**
-- Sync habits and completion history across devices via Core Data + CloudKit.
+### 20. **iCloud Sync** ✅ Implemented
+- Habits and completion history are mirrored through Core Data + CloudKit.
+- Settings reports successful exports and CloudKit errors.
+- Fresh installations check for an iCloud backup before opening the app.
+- Deploy the CloudKit development schema to production before an App Store release.
 
 ### 21. **Habit Templates**
 - Presets like "Morning routine", "Exercise", "Reading" for one-tap setup.

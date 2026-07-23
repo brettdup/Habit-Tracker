@@ -16,6 +16,12 @@ A curated list of potential improvements, organized by impact.
 - Accent color: Blue, Purple, Green, Orange, Pink, Teal (`AppAccentColor`)
 - Applied app-wide via `preferredColorScheme` and `tint` in `Habit_TrackerApp`
 
+### iCloud Backup & Sync
+- Existing Core Data store is mirrored to the user's private iCloud database
+- Habits and completion history sync across devices
+- Settings reports confirmed CloudKit exports and any sync errors
+- Fresh installations check CloudKit at launch and offer to restore imported habits
+
 ---
 
 ## High Impact
@@ -59,27 +65,23 @@ A curated list of potential improvements, organized by impact.
 - Presets like "Morning routine", "Exercise", "Reading"
 - One-tap add with common settings
 
-### 9. iCloud Sync
-- Sync habits across devices
-- Backup and restore
-
 ---
 
 ## Nice to Have
 
-### 10. Gamification
+### 9. Gamification
 - Points/XP for completions
 - Achievements (first habit, 7-day streak, etc.)
 
-### 11. Undo Completion
+### 10. Undo Completion
 - "Undo" toast after marking complete
 - Avoid accidental taps
 
-### 12. Bulk Actions
+### 11. Bulk Actions
 - Select multiple habits
 - Bulk edit category, schedule, or delete
 
-### 13. Apple Watch
+### 12. Apple Watch
 - Quick complete from watch
 - Complication for today's progress
 
